@@ -14,6 +14,11 @@ ALLOWED_PATHS = ("/oauth2/tokenP", "/uapi/domestic-stock/v1/quotations/inquire-p
                  "/uapi/domestic-stock/v1/quotations/inquire-daily-itemchartprice")
 DAILY_FIELDS = {"stck_bsop_date": "date", "stck_oprc": "open", "stck_hgpr": "high", "stck_lwpr": "low",
                 "stck_clpr": "close", "acml_vol": "volume", "acml_tr_pbmn": "turnover"}
+# Per-day corporate-action markers in the same answer (names from KIS's official sample code,
+# koreainvestment/open-trading-api chk_inquire_daily_itemchartprice.py). Kept verbatim as text: the code values
+# are not interpreted here until a live answer has been inspected.
+DAILY_EVENT_FIELDS = {"flng_cls_code": "kis_lock_code", "prtt_rate": "kis_split_ratio", "mod_yn": "kis_modified",
+                      "revl_issu_reas": "kis_revaluation_reason"}
 RATE_LIMIT_CODES = ("EGW00201",)      # KIS: per-second call limit exceeded (retried, bounded)
 DAILY_CHUNK_DAYS = 130                # 131 calendar days hold at most 94 weekdays < the 100-row answer limit
 
@@ -40,7 +45,10 @@ def parse_daily_rows(rows: Any, symbol: str) -> tuple[pd.DataFrame, int]:
     missing = set(DAILY_FIELDS) - set(df.columns)
     if missing:
         raise KisAPIError(f"Unexpected KIS daily response; missing fields: {sorted(missing)}")
-    df = df.rename(columns=DAILY_FIELDS)[list(DAILY_FIELDS.values())]
+    events = [c for c in DAILY_EVENT_FIELDS if c in df.columns]
+    df = df.rename(columns={**DAILY_FIELDS, **DAILY_EVENT_FIELDS})[list(DAILY_FIELDS.values()) + [DAILY_EVENT_FIELDS[c] for c in events]]
+    for c in events:
+        df[DAILY_EVENT_FIELDS[c]] = df[DAILY_EVENT_FIELDS[c]].astype(str).str.strip()
     df["date"] = pd.to_datetime(df["date"], format="%Y%m%d", errors="coerce")
     for col in ["open", "high", "low", "close", "volume", "turnover"]:
         df[col] = pd.to_numeric(df[col], errors="coerce")
@@ -49,7 +57,7 @@ def parse_daily_rows(rows: Any, symbol: str) -> tuple[pd.DataFrame, int]:
     df = df.sort_values("date").reset_index(drop=True)
     df["market"], df["symbol"], df["source"], df["exchange"] = "KR", symbol, "kis_eod", "KRX"
     df["adjusted"] = True  # FID_ORG_ADJ_PRC = "0" (수정주가)
-    return df[cols], n0 - len(df)
+    return df[cols + [DAILY_EVENT_FIELDS[c] for c in events]], n0 - len(df)
 
 
 class KISClient:

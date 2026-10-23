@@ -79,6 +79,11 @@ def run(argv: list[str] | None = None, kis_client=None, dart_client=None) -> int
             except Exception as exc:  # recorded per symbol; the message carries no credentials
                 errors[s] = f"{type(exc).__name__}: {str(exc)[:200]}"
                 continue
+            ev_cols = [c for c in ("kis_lock_code", "kis_split_ratio", "kis_modified", "kis_revaluation_reason") if c in ref]
+            if ev_cols:  # days KIS itself marks (raw codes, interpreted only after inspection)
+                marked = ref[(ref.get("kis_modified", "") == "Y") | (pd.to_numeric(ref.get("kis_split_ratio"), errors="coerce").fillna(0) != 0)]
+                if len(marked):
+                    marked[["date", *ev_cols]].to_csv(out / f"kis_event_days_{s}.csv", index=False)
             res = compare_daily(prim, ref, s)
             res["detail"].to_csv(out / f"price_detail_{s}.csv", index=False)
             recs.append({k: v for k, v in res.items() if k not in ("detail", "segments")} | {"segments": json.dumps(res["segments"], default=str)})

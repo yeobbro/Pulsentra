@@ -204,3 +204,12 @@ def test_dart_unconfigured_makes_no_call():
                                        ("감사보고서제출", None), ("분기보고서 (2026.09)", None)])
 def test_corporate_action_classification(name, kind):
     assert classify_corporate_action(name) == kind
+
+
+def test_kis_daily_event_fields_are_kept_verbatim():
+    rows = [{**_row("20260105"), "flng_cls_code": "00", "prtt_rate": "0.00", "mod_yn": "N", "revl_issu_reas": ""},
+            {**_row("20260106"), "flng_cls_code": "02", "prtt_rate": "50.00", "mod_yn": "Y", "revl_issu_reas": "03"}]
+    df, _ = parse_daily_rows(rows, "005930")
+    assert list(df["kis_split_ratio"]) == ["0.00", "50.00"] and list(df["kis_modified"]) == ["N", "Y"]
+    df2, _ = parse_daily_rows([_row("20260105")], "005930")          # older answers without the fields still parse
+    assert "kis_split_ratio" not in df2
