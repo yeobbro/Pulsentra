@@ -14,3 +14,16 @@ reports/**/trades/
 reports/**/*.csv
 reports/**/*.parquet
 reports/**/*.jsonl
+
+# Pulsentra local credentials and datasets
+.env.*
+!.env.example
+data/real/
+data/raw/
+data/cache/
+
+# Generated research outputs
+reports/**/*.csv
+reports/**/*.parquet
+reports/**/*.jsonl
+reports/**/trades/
