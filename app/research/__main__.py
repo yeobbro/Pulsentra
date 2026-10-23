@@ -21,6 +21,9 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--end", default=None)
     ap.add_argument("--min-turnover", type=float, default=None, help="KRW/day, estimated (default 1e9)")
     ap.add_argument("--random-pool", type=int, default=None)
+    ap.add_argument("--commission-bps", type=float, default=None, help="per side (default 1.5, assumption)")
+    ap.add_argument("--sell-tax-bps", type=float, default=None, help="on sells (default 20, one rate for all years)")
+    ap.add_argument("--slippage-bps", type=float, default=None, help="per side (default 10, assumption)")
     a = ap.parse_args(argv)
     t = time.time()
     log = lambda m: print(f"[{time.time() - t:7.1f}s] {m}", flush=True)  # noqa: E731
@@ -35,6 +38,9 @@ def main(argv: list[str] | None = None) -> int:
         cfg.min_avg_turnover = a.min_turnover
     if a.random_pool is not None:
         cfg.random_pool = a.random_pool
+    for key in ("commission_bps", "sell_tax_bps", "slippage_bps"):
+        if getattr(a, key) is not None:
+            cfg.costs[key] = getattr(a, key)
     cmd = "python -m app.research " + " ".join(shlex.quote(x) for x in (argv if argv is not None else sys.argv[1:]))
     res = Study(ds, cfg, Path(a.out), log).run(cmd)
     write_report(res, cfg, Path(a.out))

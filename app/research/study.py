@@ -24,6 +24,8 @@ from app.backtesting.engine import ExitConfig, run_portfolio
 from app.backtesting.metrics import buy_and_hold_curve, equity_metrics, max_consecutive, period_returns, trade_metrics, wilson_interval
 from app.indicators import ML_FEATURES, compute_indicators
 from app.research.data import RealDataset, sample_description
+from app.research.manifest import capture_warnings, environment_info, git_info, output_inventory
+from app.research.validity import assess, coverage_table
 from app.risk import CostModel, RiskConfig
 from app.strategies import get_strategy
 from app.strategies.base import Strategy
@@ -67,6 +69,25 @@ class StudyConfig:
     portfolio_random_seeds: int = 5
     ml_exit: str = "ATR1.5|2R|10d"
     seed: int = 7
+
+    def validate(self) -> None:
+        """Reject settings that would let a trade signalled in one period be scored with bars from the next.
+
+        `max_hold` trading bars after the signal span at least max_hold * 7/5 calendar days. Holidays and trading
+        halts can stretch that further, so trades that still cross a period end are counted per run
+        (`boundary_crossing_trades` in the manifest) rather than assumed away.
+        """
+        need = int(np.ceil(max(self.holds) * 7 / 5))
+        if self.embargo_days < need:
+            raise ValueError(f"embargo_days={self.embargo_days} < {need}: the longest hold ({max(self.holds)} bars) "
+                             "could close in the next period")
+        for name, (a, b) in self.periods.items():
+            if pd.Timestamp(a) > pd.Timestamp(b):
+                raise ValueError(f"period {name}: start {a} after end {b}")
+        spans = sorted((pd.Timestamp(a), pd.Timestamp(b), n) for n, (a, b) in self.periods.items())
+        for (a1, b1, n1), (a2, _, n2) in zip(spans, spans[1:]):
+            if a2 <= b1:
+                raise ValueError(f"periods {n1} and {n2} overlap")
 
     def exit_grid(self) -> dict[str, ExitConfig]:
         out = {}
@@ -135,6 +156,7 @@ def summarize(df: pd.DataFrame) -> dict:
 
 class Study:
     def __init__(self, ds: RealDataset, cfg: StudyConfig, out_dir: Path, log=print) -> None:
+        cfg.validate()
         self.ds, self.cfg, self.out, self.log = ds, cfg, Path(out_dir), log
         self.out.mkdir(parents=True, exist_ok=True)
         self.costs = CostModel(**cfg.costs)
@@ -230,10 +252,21 @@ class Study:
                            "holding_days": net["exit_offset"] + 1, "entry_price": net["fill"], "initial_stop": net["stop"]})
         if with_gross:
             df["gross_return"] = self.simulate(rows, ec, CostModel.zero())["net_return"]
+        exit_row = rows + 1 + np.maximum(net["exit_offset"], 0)
+        df["exit_date"] = pd.to_datetime(self.G_dates[np.minimum(exit_row, len(self.G_dates) - 1)])
         df = df[df["net_return"].notna()].copy()
         df["period"] = self.period_of(df["signal_date"])
+        df["crosses_period_end"] = self.crosses_period_end(df)
         df["regime"] = self.G_regime[df["row"].to_numpy()]
         return df
+
+    def crosses_period_end(self, df: pd.DataFrame) -> np.ndarray:
+        """True when a trade signalled inside a period exits after that period's last calendar day."""
+        out = np.zeros(len(df), dtype=bool)
+        for name, (_, b) in self.cfg.periods.items():
+            m = (df["period"] == name).to_numpy()
+            out[m] = (df["exit_date"].to_numpy()[m] > np.datetime64(pd.Timestamp(b)))
+        return out
 
     # ---- exit grid, selection, walk-forward
     def run_grid(self) -> pd.DataFrame:
@@ -478,17 +511,19 @@ class Study:
     # ---- everything
     def run(self, command: str = "") -> dict:
         t0 = time.time()
-        self.prepare()
-        self.build_signals()
-        grid = self.run_grid()
-        chosen = self.select(grid)
-        wf = self.walk_forward()
-        rnd = self.random_comparison(chosen)
-        reg = self.regime_table(chosen)
-        cost = self.cost_sensitivity(chosen)
-        port, trades = self.portfolio(chosen)
-        mlr, mld = self.ml()
-        qsum, qiss = self.quality_tables()
+        started = pd.Timestamp.now(tz="UTC").isoformat()
+        with capture_warnings() as caught:
+            self.prepare()
+            self.build_signals()
+            grid = self.run_grid()
+            chosen = self.select(grid)
+            wf = self.walk_forward()
+            rnd = self.random_comparison(chosen)
+            reg = self.regime_table(chosen)
+            cost = self.cost_sensitivity(chosen)
+            port, trades = self.portfolio(chosen)
+            mlr, mld = self.ml()
+            qsum, qiss = self.quality_tables()
         desc = sample_description(self.ds)
         o = self.out
         grid.to_csv(o / "strategy_exit_grid.csv", index=False)
@@ -505,17 +540,43 @@ class Study:
         tdir.mkdir(exist_ok=True)
         for name, df in trades.items():
             df.to_csv(tdir / f"portfolio_{name}.csv", index=False)
+        boundary = {}
         for label, ex in chosen.items():
             oc = self.outcome_df(label, ex)
             oc.drop(columns=["row"]).to_csv(tdir / f"signals_{label}__{ex.replace('|', '_')}.csv", index=False)
-        manifest = {
-            "command": command, "started_utc": pd.Timestamp.utcnow().isoformat(), "seconds": round(time.time() - t0, 1),
-            "git_commit": _git_commit(), "python": platform.python_version(), "config": _jsonable(asdict(self.cfg)),
-            "chosen_exit_on_dev": chosen, "sample": desc, "provenance": {k: v for k, v in self.ds.provenance.items() if k != "manifest_sha256"},
-            "data_fingerprint": _fingerprint(self.ds.bars), "timing": self.timing, "configs_tested_per_strategy": len(self.grid),
-        }
-        (o / "run_manifest.json").write_text(json.dumps(manifest, ensure_ascii=False, indent=2, default=str), encoding="utf-8")
+            inp = oc[oc["period"] != ""]
+            boundary[label] = {"exit": ex, "trades": int(len(inp)), "crossing": int(inp["crosses_period_end"].sum()),
+                               "by_period": {p: int(g["crosses_period_end"].sum()) for p, g in inp.groupby("period")}}
         (o / "ml_reliability.json").write_text(json.dumps(mld, ensure_ascii=False, default=str), encoding="utf-8")
+        q_rows = int(len(self.ds.bars)) + int(len(self.ds.rejected))
+        validity = assess(desc, {"rows_total": q_rows, "rows_error": int(len(self.ds.rejected))})
+        git = git_info()
+        manifest = {
+            "manifest_version": 2,
+            "command": command, "started_utc": started, "finished_utc": pd.Timestamp.now(tz="UTC").isoformat(),
+            "seconds": round(time.time() - t0, 1),
+            "git_commit": _git_commit(), "git": git, "python": platform.python_version(), "environment": environment_info(),
+            "config": _jsonable(asdict(self.cfg)),
+            "cost_assumptions": {**self.cfg.costs, "round_trip_bps": 2 * self.costs.commission_bps + self.costs.sell_tax_bps + 2 * self.costs.slippage_bps,
+                                 "changed_from_defaults": {k: {"default": v, "used": self.cfg.costs.get(k)}
+                                                           for k, v in StudyConfig().costs.items() if self.cfg.costs.get(k) != v},
+                                 "note": "per-side commission and slippage, sell tax on sells only; assumptions, not broker quotes"},
+            "random_seeds": {"random_pool_and_ml": self.cfg.seed, "random_comparison": self.cfg.seed + 1,
+                             "portfolio_random_entry": list(range(1, self.cfg.portfolio_random_seeds + 1)), "cluster_bootstrap": 11},
+            "chosen_exit_on_dev": chosen, "selection_rule": "highest dev mean_net with n >= min_dev_trades; validation/test never used for selection",
+            "sample": desc, "data_range": {"first": desc.get("first_date"), "last": desc.get("last_date")},
+            "provenance": {k: v for k, v in self.ds.provenance.items() if k != "manifest_sha256"},
+            "data_fingerprint": _fingerprint(self.ds.bars), "timing": self.timing, "configs_tested_per_strategy": len(self.grid),
+            "experiments_total": len(self.grid) * (len(self.cfg.strategies) + 1),
+            "exclusions": {"rows_rejected_by_quality": int(len(self.ds.rejected)), "halt_rows_removed": int(len(self.ds.halts)),
+                           "rows_in_contaminated_volume_windows": int(sum(int(self.prepared[k]["contaminated"].sum()) for k in self.keys)),
+                           "eligible_rows": int(self.G_elig.sum()), "total_rows": int(len(self.G_elig))},
+            "boundary_crossing_trades": boundary,
+            "warnings": caught,
+            "validity": validity, "data_treatments": coverage_table(),
+        }
+        manifest["outputs"] = output_inventory(o, skip=("run_manifest.json", "REPORT.md"))
+        (o / "run_manifest.json").write_text(json.dumps(manifest, ensure_ascii=False, indent=2, default=str), encoding="utf-8")
         return {"grid": grid, "chosen": chosen, "wf": wf, "random": rnd, "regime": reg, "cost": cost, "portfolio": port,
                 "ml": mlr, "quality": qsum, "sample": desc, "manifest": manifest}
 

@@ -37,8 +37,16 @@ def write_report(res: dict, cfg, out: Path) -> Path:
     g = res["grid"]
     chosen = res["chosen"]
     L: list[str] = []
-    L.append("# Pulsentra v0.3 — 실제 데이터 전략 검증 결과\n")
+    L.append("# Pulsentra 리서치 실행 — 실제 데이터 전략 검증 결과\n")
     L.append("> 자동 생성 보고서. 이 문서의 수치는 아래 데이터·설정·코드 버전으로 재현됩니다. 과거 검증 결과이며 미래 수익을 보장하지 않습니다.\n")
+    v = m.get("validity")
+    if v:
+        L.append(f"\n**결과 상태: {v['status']}** — INELIGIBLE은 어떤 결정에도 쓰면 안 되는 결과, PROVISIONAL은 내부적으로 일관되지만 "
+                 "검증되지 않은 데이터 가정에 기대는 결과입니다.\n")
+        for r in v.get("ineligible_reasons", []):
+            L.append(f"- 부적격 사유: {r}\n")
+        if v.get("unverified_items"):
+            L.append(f"- 미검증·부분 처리 항목: {', '.join(v['unverified_items'])} (자세한 내용은 `run_manifest.json`의 `data_treatments`)\n")
     L.append("## 1. 데이터 출처와 표본\n")
     L.append(f"- 가격: {prov.get('price_source')}\n- 상장/폐지 목록: {prov.get('listing_source')}\n- 지수: {prov.get('index_source')}\n"
              f"- 수집 시각(UTC): {prov.get('fetched_at_range')}\n- 데이터 지문: `{m['data_fingerprint']}` · 코드: `{m.get('git_commit')}`\n")
@@ -124,6 +132,16 @@ def write_report(res: dict, cfg, out: Path) -> Path:
                                 ("불채택 사유 / 비고", "rejection_reasons", lambda v: "" if v is None or v != v else str(v))]))
     L.append("\n## 11. 재현\n\n```bash\npython scripts/collect_kr_daily.py --out data/real --start 2016-01-01   # 데이터 수집 (재실행 시 이어받기)\n"
              f"{m['command']}\n```\n\n실행 시간 {m['seconds']}초 · 단계별 {m['timing']}\n")
+    git = m.get("git") or {}
+    if git:
+        env = m.get("environment", {})
+        L.append(f"\n- 코드: `{git.get('commit')}` (브랜치 `{git.get('branch')}`) · 커밋만으로 재현 가능: "
+                 f"{'예' if git.get('reproducible_from_commit') else '아니오 — 커밋되지 않은 코드 변경: ' + ', '.join(git.get('uncommitted_code_files') or [])}\n"
+                 f"- Python {env.get('python')} · 패키지 {env.get('packages')}\n"
+                 f"- 실행 중 경고 {sum(w['count'] for w in m.get('warnings', []))}건 · 실험 조합 수 {m.get('experiments_total')} (선택 편향 해석 시 참고)\n")
+        bc = m.get("boundary_crossing_trades") or {}
+        if bc:
+            L.append("- 기간 끝을 넘어 청산된 거래(신호 기간 기준): " + ", ".join(f"{k} {v['crossing']}/{v['trades']}" for k, v in bc.items()) + "\n")
     L.append("\n## 12. 파일\n\n`strategy_exit_grid.csv`(전 조합×기간), `walk_forward_by_year.csv`, `vs_random_entry.csv`, `by_regime.csv`, `cost_sensitivity.csv`, "
              "`portfolio_results.csv`, `ml_vs_rule.csv`, `ml_reliability.json`, `data_quality_summary.csv`, `data_quality_issues.csv`, `provider_halt_rows.csv`, "
              "`trades/portfolio_*.csv`(포트폴리오 거래별 진입·청산), `trades/signals_*.csv`(신호별 결과), `run_manifest.json`.\n")
