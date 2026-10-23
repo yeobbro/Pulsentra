@@ -14,3 +14,13 @@ reports/**/trades/
 reports/**/*.csv
 reports/**/*.parquet
 reports/**/*.jsonl
+
+# Pulsentra local credentials and datasets (same rules as research/v0.4-data-audit c480b7d, plus audit outputs)
+.env.*
+!.env.example
+data/raw/
+data/cache/
+data/audit/
+*.sqlite3
+*.sqlite3-journal
+*.db
