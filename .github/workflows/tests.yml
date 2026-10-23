@@ -1,0 +1,40 @@
+name: tests
+
+# Offline suite only: synthetic/TEST data and mocked APIs. No secrets are configured or needed;
+# tests marked `integration` skip themselves unless PULSENTRA_RUN_INTEGRATION=1.
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  locked:
+    name: locked deps (Python ${{ matrix.python }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python: ["3.12", "3.13"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+          cache: pip
+          cache-dependency-path: requirements-lock.txt
+      - run: pip install -r requirements-lock.txt
+      - name: pytest (deprecations are errors)
+        run: python -m pytest -q -W error::DeprecationWarning
+
+  ranges:
+    name: dependency ranges (Python 3.11)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: pip install -r requirements-dev.txt
+      - run: python -m pytest -q
