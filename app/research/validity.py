@@ -36,6 +36,10 @@ DATA_TREATMENTS: list[dict] = [
     {"item": "delisted_instruments", "status": PARTIAL,
      "how": "Delisted common stocks from a third-party listing cache are included; completeness of that list is unverified. Positions are closed at the last close.",
      "evidence": "scripts/collect_kr_daily.py build_universe, app/backtesting/engine.py"},
+    {"item": "delisting_mid_trade_signal_level", "status": PARTIAL,
+     "how": "Trade-level statistics drop signals whose data ends before the exit (often delisted names), which can bias them upward; "
+            "the count is reported per run (incomplete_trades_dropped). The portfolio engine closes such positions at the last close.",
+     "evidence": "app/backtesting/batch.py INCOMPLETE, app/research/study.py incomplete_stats"},
     {"item": "listing_window", "status": PARTIAL,
      "how": "Listing dates are known only for delisted names in the universe file; bars outside a known window are flagged by the audit, not removed.",
      "evidence": "app/data/audit.py listing checks"},

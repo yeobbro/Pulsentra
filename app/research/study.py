@@ -24,6 +24,7 @@ from app.backtesting.engine import ExitConfig, run_portfolio
 from app.backtesting.metrics import buy_and_hold_curve, equity_metrics, max_consecutive, period_returns, trade_metrics, wilson_interval
 from app.indicators import ML_FEATURES, compute_indicators
 from app.research.data import RealDataset, sample_description
+from app.data.audit import bars_fingerprint
 from app.research.manifest import capture_warnings, environment_info, git_info, output_inventory
 from app.research.validity import assess, coverage_table
 from app.risk import CostModel, RiskConfig
@@ -69,6 +70,9 @@ class StudyConfig:
     portfolio_random_seeds: int = 5
     ml_exit: str = "ATR1.5|2R|10d"
     seed: int = 7
+    # Optional: an audit output folder (python -m app.audit). Off by default so v0.3 runs reproduce unchanged.
+    audit_dir: str | None = None
+    audit_lookback_bars: int = 120             # longest indicator window a flagged bar can contaminate
 
     def validate(self) -> None:
         """Reject settings that would let a trade signalled in one period be scored with bars from the next.
@@ -164,15 +168,32 @@ class Study:
         self.timing: dict[str, float] = {}
 
     # ---- preparation
+    def load_audit(self) -> dict:
+        """Read an audit folder: instruments to drop and dates whose surrounding signals are excluded."""
+        d = Path(self.cfg.audit_dir)
+        sym = pd.read_csv(d / "symbol_summary.csv", dtype={"symbol": str})
+        f = pd.read_csv(d / "findings.csv", dtype={"symbol": str}, parse_dates=["date"])
+        flagged = f[(f["recommendation"] == "exclude_until_verified") & f["date"].notna()]
+        summary = json.loads((d / "audit_summary.json").read_text(encoding="utf-8"))
+        return {"dir": str(d), "drop": set(sym.loc[sym["audit_status"] == "exclude", "symbol"]),
+                "dates": {s: pd.DatetimeIndex(g["date"].unique()) for s, g in flagged.groupby("symbol")},
+                "usable_fingerprint": summary.get("usable_fingerprint"), "findings_fingerprint": summary.get("findings_fingerprint"),
+                "input_fingerprint": summary.get("input_fingerprint")}
+
     def prepare(self) -> None:
         t = time.time()
         idx = self.ds.indices
+        self.audit = self.load_audit() if self.cfg.audit_dir else None
+        self.audit_effect = {"symbols_dropped": [], "rows_signal_excluded": 0}
         exch = self.ds.instruments.set_index("symbol")["exchange"].to_dict() if "exchange" in self.ds.instruments else {}
         self.prepared: dict[tuple[str, str], pd.DataFrame] = {}
         keys, offsets, arrays = [], [], {c: [] for c in SIM_COLS}
         dates, elig, sym_of_row = [], [], []
         off = 0
         for (m, s), raw in self.ds.bars.groupby(["market", "symbol"], sort=True):
+            if self.audit and s in self.audit["drop"]:
+                self.audit_effect["symbols_dropped"].append(s)
+                continue
             bench_name = "KOSDAQ" if exch.get(s) == "KOSDAQ" else "KOSPI"
             bench = idx.get(bench_name)
             x = compute_indicators(raw, bench)
@@ -185,6 +206,15 @@ class Study:
             brk = flags.str.contains("volume_level_break").to_numpy()
             # a 40-bar volume window that contains a level break is contaminated (volume not adjusted for a split/merge)
             contam = pd.Series(brk.astype(float)).rolling(40, min_periods=1).max().to_numpy() > 0
+            if self.audit and s in self.audit["dates"]:
+                # a bar the audit says not to trust contaminates every indicator window that contains it (forward) and
+                # every trade that would hold through it (backward, longest hold)
+                hit = x["date"].isin(self.audit["dates"][s]).to_numpy().astype(float)
+                fwd = pd.Series(hit).rolling(self.cfg.audit_lookback_bars, min_periods=1).max().to_numpy() > 0
+                back = pd.Series(hit[::-1]).rolling(max(self.cfg.holds) + 1, min_periods=1).max().to_numpy()[::-1] > 0
+                extra = (fwd | back) & ~contam
+                self.audit_effect["rows_signal_excluded"] += int(extra.sum())
+                contam = contam | fwd | back
             nxt = np.r_[np.ones(len(x) - 1, dtype=bool), False]
             e = ((x["avg_turnover_20"] >= self.cfg.min_avg_turnover) & (x["close"] >= self.cfg.min_price)
                  & (x["atr_14"] > 0)).to_numpy() & ~contam & nxt
@@ -259,6 +289,19 @@ class Study:
         df["crosses_period_end"] = self.crosses_period_end(df)
         df["regime"] = self.G_regime[df["row"].to_numpy()]
         return df
+
+    def incomplete_stats(self, label: str, ex: str) -> dict:
+        """Signals whose data ends before the trade closes. The signal-level study drops them (never guesses an exit),
+        so when they sit in delisted names the trade-level means are biased upward; the portfolio engine instead
+        closes at the last close. Counted per run so the size of that bias is visible."""
+        rows = self.random_pool if label == "RANDOM_pool" else self.signal_rows[label]
+        res = self.simulate(rows, self.grid[ex], self.costs)
+        inc = REASONS[res["reason"]] == "INCOMPLETE"
+        inst = self.ds.instruments
+        delisted = set(inst.loc[inst["status"] == "delisted", "symbol"]) if "status" in inst else set()
+        syms = np.array([self.keys[i][1] for i in self.G_sym[rows[inc]]], dtype=object)
+        return {"signals": int(len(rows)), "incomplete": int(inc.sum()),
+                "incomplete_in_delisted": int(sum(1 for x in syms if x in delisted))}
 
     def crosses_period_end(self, df: pd.DataFrame) -> np.ndarray:
         """True when a trade signalled inside a period exits after that period's last calendar day."""
@@ -540,13 +583,14 @@ class Study:
         tdir.mkdir(exist_ok=True)
         for name, df in trades.items():
             df.to_csv(tdir / f"portfolio_{name}.csv", index=False)
-        boundary = {}
+        boundary, incomplete = {}, {}
         for label, ex in chosen.items():
             oc = self.outcome_df(label, ex)
             oc.drop(columns=["row"]).to_csv(tdir / f"signals_{label}__{ex.replace('|', '_')}.csv", index=False)
             inp = oc[oc["period"] != ""]
             boundary[label] = {"exit": ex, "trades": int(len(inp)), "crossing": int(inp["crosses_period_end"].sum()),
                                "by_period": {p: int(g["crosses_period_end"].sum()) for p, g in inp.groupby("period")}}
+            incomplete[label] = self.incomplete_stats(label, ex)
         (o / "ml_reliability.json").write_text(json.dumps(mld, ensure_ascii=False, default=str), encoding="utf-8")
         q_rows = int(len(self.ds.bars)) + int(len(self.ds.rejected))
         validity = assess(desc, {"rows_total": q_rows, "rows_error": int(len(self.ds.rejected))})
@@ -572,6 +616,14 @@ class Study:
                            "rows_in_contaminated_volume_windows": int(sum(int(self.prepared[k]["contaminated"].sum()) for k in self.keys)),
                            "eligible_rows": int(self.G_elig.sum()), "total_rows": int(len(self.G_elig))},
             "boundary_crossing_trades": boundary,
+            "incomplete_trades_dropped": incomplete,
+            "audit": None if not self.audit else {
+                "dir": self.audit["dir"], "input_fingerprint": self.audit["input_fingerprint"],
+                "findings_fingerprint": self.audit["findings_fingerprint"],
+                "usable_rows_match_study": self.audit["usable_fingerprint"] == bars_fingerprint(self.ds.bars),
+                "symbols_dropped": self.audit_effect["symbols_dropped"],
+                "rows_signal_excluded_by_audit": self.audit_effect["rows_signal_excluded"],
+                "lookback_bars": self.cfg.audit_lookback_bars},
             "warnings": caught,
             "validity": validity, "data_treatments": coverage_table(),
         }

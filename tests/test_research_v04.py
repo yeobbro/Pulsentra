@@ -141,3 +141,40 @@ def test_treatment_table_is_well_formed():
     assert len(items) == len(set(items))
     assert {t["status"] for t in DATA_TREATMENTS} <= {HANDLED, PARTIAL, NOT_HANDLED}
     assert all(t["how"] and t["evidence"] for t in DATA_TREATMENTS)
+
+
+def test_audit_exclusions_feed_the_study_and_are_recorded(tmp_path):
+    """--audit drops nothing by default-off; when given, flagged bars remove nearby signals and the manifest says so."""
+    import app.research.__main__ as cli
+    import app.research.study as st
+    from app.audit.__main__ import main as audit_main
+    from tests.audit_fixtures import write_naver_raw
+    d = write_naver_raw(tmp_path / "data")
+    assert audit_main(["--data", str(d), "--out", str(tmp_path / "audit")]) == 0
+    orig = st.StudyConfig
+
+    def cfg():
+        c = _small(orig)
+        c.periods = {"dev": ("2023-01-01", "2023-08-31"), "validation": ("2023-09-01", "2023-12-31"), "test": ("2024-01-01", "2099-12-31")}
+        return c
+    st.StudyConfig = cli.StudyConfig = cfg
+    try:
+        base = ["--data", str(d), "--format", "naver_raw", "--start", "2023-01-01"]
+        assert cli.main(base + ["--out", str(tmp_path / "plain")]) == 0
+        assert cli.main(base + ["--out", str(tmp_path / "audited"), "--audit", str(tmp_path / "audit")]) == 0
+    finally:
+        st.StudyConfig = cli.StudyConfig = orig
+    plain = json.loads((tmp_path / "plain" / "run_manifest.json").read_text(encoding="utf-8"))
+    aud = json.loads((tmp_path / "audited" / "run_manifest.json").read_text(encoding="utf-8"))
+    assert plain["audit"] is None
+    a = aud["audit"]
+    assert a["usable_rows_match_study"] is True                  # the audit described exactly the rows the study used
+    assert a["rows_signal_excluded_by_audit"] > 0
+    assert aud["exclusions"]["eligible_rows"] < plain["exclusions"]["eligible_rows"]
+    assert plain["data_fingerprint"] == aud["data_fingerprint"]  # same data; only eligibility changed
+
+
+def test_incomplete_trades_are_counted(two_runs):
+    _, m, _, _ = two_runs
+    inc = m["incomplete_trades_dropped"]
+    assert inc and all(v["signals"] >= v["incomplete"] >= v["incomplete_in_delisted"] >= 0 for v in inc.values())

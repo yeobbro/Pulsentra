@@ -139,6 +139,11 @@ def write_report(res: dict, cfg, out: Path) -> Path:
                  f"{'예' if git.get('reproducible_from_commit') else '아니오 — 커밋되지 않은 코드 변경: ' + ', '.join(git.get('uncommitted_code_files') or [])}\n"
                  f"- Python {env.get('python')} · 패키지 {env.get('packages')}\n"
                  f"- 실행 중 경고 {sum(w['count'] for w in m.get('warnings', []))}건 · 실험 조합 수 {m.get('experiments_total')} (선택 편향 해석 시 참고)\n")
+        inc = m.get("incomplete_trades_dropped") or {}
+        if inc:
+            L.append("- 데이터가 청산 전에 끝나 거래 단위 통계에서 빠진 신호(그중 상장폐지 종목): "
+                     + ", ".join(f"{k} {v['incomplete']}({v['incomplete_in_delisted']})/{v['signals']}" for k, v in inc.items())
+                     + " — 상장폐지 종목의 미청산 거래가 많으면 거래 단위 평균이 위로 치우칩니다. 포트폴리오 결과는 마지막 종가로 청산합니다.\n")
         bc = m.get("boundary_crossing_trades") or {}
         if bc:
             L.append("- 기간 끝을 넘어 청산된 거래(신호 기간 기준): " + ", ".join(f"{k} {v['crossing']}/{v['trades']}" for k, v in bc.items()) + "\n")

@@ -497,6 +497,17 @@ def _hash_frame(df: pd.DataFrame) -> str | None:
     return h.hexdigest()[:16]
 
 
+def bars_fingerprint(bars: pd.DataFrame) -> str | None:
+    """Dtype-independent hash of (symbol, date, OHLCV): the same rows give the same value in the audit and the study."""
+    if bars is None or bars.empty:
+        return None
+    b = pd.DataFrame({"symbol": bars["symbol"].astype(str), "date": pd.to_datetime(bars["date"]).dt.strftime("%Y-%m-%d")})
+    for c in ("open", "high", "low", "close", "volume"):
+        b[c] = pd.to_numeric(bars[c], errors="coerce").astype(float).round(6)
+    b = b.sort_values(["symbol", "date"], kind="stable")
+    return hashlib.sha256(pd.util.hash_pandas_object(b, index=False).values.tobytes()).hexdigest()[:16]
+
+
 def summarize(bars, F, C, X, K, S, U, cfg: AuditConfig) -> dict:
     by_check = []
     if len(F):
@@ -523,7 +534,7 @@ def summarize(bars, F, C, X, K, S, U, cfg: AuditConfig) -> dict:
         "config": asdict(cfg),
         "input_fingerprint": _hash_frame(bars[raw_cols].sort_values(["symbol", "date"], kind="stable")) if len(bars) else None,
         "findings_fingerprint": _hash_frame(F),
-        "usable_fingerprint": _hash_frame(U[["symbol", "date", "open", "high", "low", "close", "volume"]]) if len(U) else None,
+        "usable_fingerprint": bars_fingerprint(U),
     }
 
 
