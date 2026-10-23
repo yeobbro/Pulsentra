@@ -8,6 +8,7 @@ import time
 from pathlib import Path
 
 from app.research.data import load_naver_raw, load_standard_csv
+from app.research.manifest import guard_output_dir
 from app.research.report import write_report
 from app.research.study import Study, StudyConfig
 
@@ -24,11 +25,17 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--commission-bps", type=float, default=None, help="per side (default 1.5, assumption)")
     ap.add_argument("--sell-tax-bps", type=float, default=None, help="on sells (default 20, one rate for all years)")
     ap.add_argument("--slippage-bps", type=float, default=None, help="per side (default 10, assumption)")
+    ap.add_argument("--overwrite", action="store_true", help="allow writing into a non-empty --out folder")
     ap.add_argument("--crosscheck", default=None, help="crosscheck_status.json from python -m app.crosscheck; only checks "
                                                         "that actually ran and passed count as verified")
     ap.add_argument("--audit", default=None, help="audit folder from python -m app.audit: drop excluded instruments and "
                                                    "exclude signals around bars the audit marks exclude_until_verified")
     a = ap.parse_args(argv)
+    try:
+        guard_output_dir(Path(a.out), Path(a.data), a.overwrite)
+    except ValueError as exc:
+        print(str(exc), file=sys.stderr)
+        return 2
     t = time.time()
     log = lambda m: print(f"[{time.time() - t:7.1f}s] {m}", flush=True)  # noqa: E731
     loader = load_naver_raw if a.format == "naver_raw" else load_standard_csv

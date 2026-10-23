@@ -191,3 +191,17 @@ def test_crosscheck_status_only_counts_checks_that_passed(tmp_path):
     assert not any(i.startswith("cross_source_price_check") for i in items)
     assert any(i.startswith("corporate_action_disclosure_match") for i in items)
     assert m["validity"]["verifications_from"] == str(st)
+
+
+def test_research_cli_never_overwrites_previous_results(tmp_path):
+    """reports/v0.3 holds the tracked baseline REPORT.md; re-running into it must be refused without --overwrite."""
+    import app.research.__main__ as cli
+    data = tmp_path / "data"
+    data.mkdir()
+    _write_standard_dir(data)
+    prev = tmp_path / "reports" / "v0.3"
+    prev.mkdir(parents=True)
+    (prev / "REPORT.md").write_text("baseline")
+    assert cli.main(["--data", str(data), "--format", "standard", "--out", str(prev)]) == 2
+    assert (prev / "REPORT.md").read_text() == "baseline"
+    assert cli.main(["--data", str(data), "--format", "standard", "--out", str(data)]) == 2

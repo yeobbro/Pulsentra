@@ -176,3 +176,15 @@ def test_live_dart_listing_smoke():
         pytest.skip("DART key not set")
     codes = c.corp_codes()
     assert "005930" in codes
+
+
+def test_runner_refuses_to_overwrite_results_or_write_into_data(tmp_path):
+    from app.crosscheck.__main__ import run
+    d = write_naver_raw(tmp_path / "data")
+    out = tmp_path / "cc"
+    out.mkdir()
+    (out / "crosscheck_status.json").write_text("{}")
+    assert run(["--data", str(d), "--out", str(out)], Unconfigured(), Unconfigured()) == 2
+    assert (out / "crosscheck_status.json").read_text() == "{}"
+    assert run(["--data", str(d), "--out", str(d / "raw" / "cc")], Unconfigured(), Unconfigured()) == 2
+    assert run(["--data", str(d), "--out", str(out), "--overwrite"], Unconfigured(), Unconfigured()) == 3

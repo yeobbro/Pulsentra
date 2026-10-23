@@ -18,7 +18,7 @@ import pandas as pd
 from app.audit import load_raw_naver
 from app.data.audit import AuditConfig, audit_frame
 from app.research.crosscheck import compare_daily, match_corporate_actions
-from app.research.manifest import environment_info, git_info
+from app.research.manifest import environment_info, git_info, guard_output_dir
 
 
 def pick_sample(symbols: list[str], candidates: pd.DataFrame | None, n: int, seed: int) -> list[str]:
@@ -46,8 +46,14 @@ def run(argv: list[str] | None = None, kis_client=None, dart_client=None) -> int
     ap.add_argument("--start", default="2016-01-01")
     ap.add_argument("--end", default=None)
     ap.add_argument("--out", default=None)
+    ap.add_argument("--overwrite", action="store_true", help="allow writing into a non-empty --out folder")
     a = ap.parse_args(argv)
     out = Path(a.out) if a.out else Path("data/crosscheck") / pd.Timestamp.now(tz="UTC").strftime("%Y%m%dT%H%M%SZ")
+    try:
+        guard_output_dir(out, Path(a.data), a.overwrite)
+    except ValueError as exc:
+        print(str(exc), file=sys.stderr)
+        return 2
     out.mkdir(parents=True, exist_ok=True)
     if kis_client is None:
         from app.providers.kis import KISClient

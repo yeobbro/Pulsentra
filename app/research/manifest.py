@@ -56,6 +56,21 @@ def environment_info() -> dict:
             "platform": platform.platform(terse=True), "packages": package_versions(), "argv0": Path(sys.argv[0]).name}
 
 
+def guard_output_dir(out: Path, data_dir: Path, overwrite: bool) -> None:
+    """Raise ValueError when writing to `out` could overwrite input data or a previous run's results.
+
+    Refused: the input folder itself, a folder that contains it, anything under its raw/ files, and a non-empty
+    folder unless `overwrite` (e.g. reports/v0.3, whose REPORT.md is the tracked v0.3 baseline).
+    """
+    out_r, data_r = Path(out).resolve(), Path(data_dir).resolve()
+    if out_r == data_r or out_r in data_r.parents:
+        raise ValueError(f"출력 폴더가 입력 데이터 폴더와 같거나 그것을 포함합니다: {out}")
+    if data_r in out_r.parents and out_r.relative_to(data_r).parts[0] == "raw":
+        raise ValueError(f"출력 폴더가 원본 일봉 폴더(raw/) 안에 있습니다: {out}")
+    if out_r.exists() and any(out_r.iterdir()) and not overwrite:
+        raise ValueError(f"출력 폴더에 이전 결과가 있습니다: {out} (새 폴더를 쓰거나 --overwrite)")
+
+
 def file_sha256(path: Path, chunk: int = 1 << 20) -> str:
     h = hashlib.sha256()
     with Path(path).open("rb") as fh:
