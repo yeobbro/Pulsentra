@@ -1,0 +1,147 @@
+{
+  "command": "python -m app.research --data /home/claude/realdata --format naver_raw --out /home/claude/realdata/reports/v0.3",
+  "started_utc": "2026-10-23T11:27:37.153228+00:00",
+  "seconds": 771.5,
+  "git_commit": "4918af9",
+  "python": "3.13.16",
+  "config": {
+    "periods": {
+      "dev": [
+        "2016-01-01",
+        "2021-12-31"
+      ],
+      "validation": [
+        "2022-01-01",
+        "2023-12-31"
+      ],
+      "test": [
+        "2024-01-01",
+        "2099-12-31"
+      ]
+    },
+    "embargo_days": 35,
+    "strategies": {
+      "A_volume_quiet": [
+        "volume_quiet",
+        {}
+      ],
+      "B1_quiet_then_breakout": [
+        "volume_quiet_breakout",
+        {}
+      ],
+      "B2_breakout_with_volume": [
+        "breakout_volume",
+        {}
+      ],
+      "C_pullback_rebound": [
+        "pullback_rebound",
+        {}
+      ],
+      "BASE_momentum_120d_high": [
+        "momentum_simple",
+        {}
+      ]
+    },
+    "stops": {
+      "ATR1.5": {
+        "stop_type": "atr",
+        "atr_mult": 1.5
+      },
+      "ATR2.0": {
+        "stop_type": "atr",
+        "atr_mult": 2.0
+      },
+      "PCT7": {
+        "stop_type": "percent",
+        "stop_pct": 0.07
+      },
+      "SWING10": {
+        "stop_type": "swing_low"
+      }
+    },
+    "targets": {
+      "1.5R": {
+        "target_r": 1.5
+      },
+      "2R": {
+        "target_r": 2.0
+      },
+      "3R": {
+        "target_r": 3.0
+      },
+      "PART50@1.5R+TRAIL2ATR": {
+        "target_r": null,
+        "partial_fraction": 0.5,
+        "partial_r": 1.5,
+        "trail_atr_mult": 2.0
+      }
+    },
+    "holds": [
+      5,
+      10,
+      20
+    ],
+    "default_exit": "ATR1.5|2R|10d",
+    "min_avg_turnover": 1000000000.0,
+    "min_price": 1000.0,
+    "min_dev_trades": 100,
+    "costs": {
+      "commission_bps": 1.5,
+      "sell_tax_bps": 20.0,
+      "slippage_bps": 10.0
+    },
+    "random_pool": 150000,
+    "random_draws": 1000,
+    "portfolio_random_seeds": 5,
+    "ml_exit": "ATR1.5|2R|10d",
+    "seed": 7
+  },
+  "chosen_exit_on_dev": {
+    "A_volume_quiet": "PCT7|3R|20d",
+    "B1_quiet_then_breakout": "PCT7|1.5R|20d",
+    "B2_breakout_with_volume": "SWING10|3R|20d",
+    "C_pullback_rebound": "SWING10|3R|20d",
+    "BASE_momentum_120d_high": "SWING10|2R|20d"
+  },
+  "sample": {
+    "instruments_with_bars": 2823,
+    "bars": 5799758,
+    "first_date": "2016-01-04",
+    "last_date": "2026-10-23",
+    "by_exchange": {
+      "KOSDAQ": 1919,
+      "KOSPI": 904
+    },
+    "delisted_in_universe": 274,
+    "delisted_with_bars": 273,
+    "delisting_gap_days_median": 3.0,
+    "survivorship": "상장폐지 종목 포함 (목록 출처 기준). 목록에 없는 폐지 종목과 데이터가 없는 폐지 종목은 빠져 있음",
+    "halt_marker_rows_removed": 199251,
+    "rows_rejected": 1640
+  },
+  "provenance": {
+    "format": "naver_raw",
+    "data_dir": "/home/claude/realdata",
+    "universe_rows": 2824,
+    "universe_listed": 2550,
+    "universe_delisted": 274,
+    "files_missing": [],
+    "symbols_without_bars_in_window": [],
+    "fetch_failures": [],
+    "fetched_at_range": [
+      "2026-10-23T10:02:08+00:00",
+      "2026-10-23T10:31:32+00:00"
+    ],
+    "price_source": "Naver Finance daily chart (fchart.stock.naver.com, unofficial endpoint, no key)",
+    "listing_source": "FinanceDataReader StockListing('KRX'/'KRX-DELISTING') — KRX listing snapshots cached on GitHub",
+    "index_source": "FinanceDataReader DataReader('KS11'/'KQ11') — KRX index history cached on GitHub"
+  },
+  "data_fingerprint": "de52ccfa16e847ee",
+  "timing": {
+    "prepare_s": 147.1,
+    "signals_s": 15.0,
+    "grid_s": 324.1,
+    "portfolio_s": 130.0
+  },
+  "configs_tested_per_strategy": 48
+}

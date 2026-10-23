@@ -1,0 +1,2 @@
+# Only needed for scripts/collect_kr_daily.py (listings and index history)
+finance-datareader==0.9.202
