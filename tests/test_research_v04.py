@@ -178,3 +178,16 @@ def test_incomplete_trades_are_counted(two_runs):
     _, m, _, _ = two_runs
     inc = m["incomplete_trades_dropped"]
     assert inc and all(v["signals"] >= v["incomplete"] >= v["incomplete_in_delisted"] >= 0 for v in inc.values())
+
+
+def test_crosscheck_status_only_counts_checks_that_passed(tmp_path):
+    data = tmp_path / "data"
+    data.mkdir()
+    _write_standard_dir(data)
+    st = tmp_path / "crosscheck_status.json"
+    st.write_text(json.dumps({"verified": {"cross_source_price_check": True, "corporate_action_disclosure_match": False}}))
+    m = _run(data, tmp_path / "out", ["--crosscheck", str(st)])
+    items = m["validity"]["unverified_items"]
+    assert not any(i.startswith("cross_source_price_check") for i in items)
+    assert any(i.startswith("corporate_action_disclosure_match") for i in items)
+    assert m["validity"]["verifications_from"] == str(st)

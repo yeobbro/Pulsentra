@@ -73,6 +73,7 @@ class StudyConfig:
     # Optional: an audit output folder (python -m app.audit). Off by default so v0.3 runs reproduce unchanged.
     audit_dir: str | None = None
     audit_lookback_bars: int = 120             # longest indicator window a flagged bar can contaminate
+    crosscheck_status: str | None = None       # crosscheck_status.json from python -m app.crosscheck (verification flags)
 
     def validate(self) -> None:
         """Reject settings that would let a trade signalled in one period be scored with bars from the next.
@@ -593,7 +594,12 @@ class Study:
             incomplete[label] = self.incomplete_stats(label, ex)
         (o / "ml_reliability.json").write_text(json.dumps(mld, ensure_ascii=False, default=str), encoding="utf-8")
         q_rows = int(len(self.ds.bars)) + int(len(self.ds.rejected))
-        validity = assess(desc, {"rows_total": q_rows, "rows_error": int(len(self.ds.rejected))})
+        verified = {}
+        if self.cfg.crosscheck_status:
+            cs = json.loads(Path(self.cfg.crosscheck_status).read_text(encoding="utf-8"))
+            verified = {k: bool(v) for k, v in (cs.get("verified") or {}).items()}
+        validity = assess(desc, {"rows_total": q_rows, "rows_error": int(len(self.ds.rejected))}, verified)
+        validity["verifications_from"] = self.cfg.crosscheck_status
         git = git_info()
         manifest = {
             "manifest_version": 2,

@@ -33,7 +33,7 @@ def _float(name: str, default: float, legacy: str | None = None) -> float:
 APP_NAME = "Pulsentra"
 APP_NAME_KO = "펄센트라"
 APP_TAGLINE = "AI-Powered Market Intelligence & Strategy Validation Platform"
-APP_VERSION = "0.2.0"
+APP_VERSION = "0.4.0.dev0"  # keep in step with pyproject.toml
 
 DATA_DIR = Path(_env("PULSENTRA_DATA_DIR", "MSL_DATA_DIR", str(BASE_DIR / "data")))
 DATA_DIR.mkdir(parents=True, exist_ok=True)
