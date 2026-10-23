@@ -21,6 +21,7 @@ python -m app.research --data data/real --format naver_raw --out reports/v0.4 \
 ```
 
 - 감사 기준과 출력: [`docs/DATA_AUDIT.md`](docs/DATA_AUDIT.md) · 교차 검증·API 설정: [`docs/CROSS_VALIDATION.md`](docs/CROSS_VALIDATION.md)
+- **실제 데이터 검증 절차(Mac): [`docs/REAL_DATA_RUNBOOK.md`](docs/REAL_DATA_RUNBOOK.md)**
 - 설치·테스트·재현: [`docs/SETUP.md`](docs/SETUP.md) · 구조·방법론·평가 기준: [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md)
 - 모든 연구 실행은 결과 상태(INELIGIBLE / PROVISIONAL / VERIFIED)와 그 근거를 `run_manifest.json`과 `REPORT.md`에 남깁니다.
 - **미실행:** 이 개발 환경에는 실제 데이터와 API 키가 없어, 실제 데이터 감사와 KIS·OpenDART 대조는 아직 실행하지 않았습니다.

@@ -69,7 +69,9 @@ python -m app.research --data data/real --format naver_raw --out reports/v0.4 \
     --audit data/audit/run1 --crosscheck data/crosscheck/run1/crosscheck_status.json        # 4) 연구
 ```
 
-`--audit`과 `--crosscheck` 없이 실행하면 v0.3과 같은 방식으로 계산합니다.
+`--audit`과 `--crosscheck` 없이 실행하면 v0.3과 같은 방식으로 계산합니다. `--out`에는 새 폴더를 지정합니다. 비어 있지 않은 폴더는 `--overwrite` 없이는 거부합니다.
+
+`python scripts/compare_baseline.py --data data/real --out reports/v0.4-compare`는 같은 데이터에 v0.3.0 코드와 현재 코드를 돌려 모든 결과 표를 비교합니다. 실제 데이터 단계별 절차는 [`REAL_DATA_RUNBOOK.md`](REAL_DATA_RUNBOOK.md)에 있습니다.
 
 ### `run_manifest.json` (manifest_version 2)
 

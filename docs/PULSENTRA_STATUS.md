@@ -9,7 +9,9 @@
 | 공식 출처 교차 검증 | **도구 구현, 실행 안 함** — KIS·DART 키 없음 (`docs/CROSS_VALIDATION.md`) |
 | 기준선 | `main` = `v0.3.0` = `a57dcc1` 보존. v0.3 실행 커밋 `4918af9`는 저장소에 없음(설정은 `a57dcc1`과 일치, 코드 동일성은 증명 불가) |
 | 연구 결론 | v0.3 결론 유지. 재실행하지 않음 |
-| 테스트 | `python -m pytest -q` → 아래 v0.4 테스트 절 |
+| 코드 동일성 | 같은 TEST 데이터에서 v0.3.0 코드와 결과 표가 동일함(`scripts/compare_baseline.py`). 실제 데이터로는 미확인 |
+| 실제 데이터 단계 | 절차서 `docs/REAL_DATA_RUNBOOK.md`. 감사·교차 검증·재실행 모두 미실행 |
+| 테스트 | `python -m pytest -q` → 아래 v0.4 테스트 절 (인계 시점 168 passed, 2 skipped) |
 
 ### v0.4 테스트
 
