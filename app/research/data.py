@@ -66,7 +66,12 @@ def load_naver_raw(data_dir: str | Path, start: str | None = None, end: str | No
         if not f.exists():
             missing_files.append(row.symbol)
             continue
-        raw = pd.read_csv(f, parse_dates=["date"])
+        raw = pd.read_csv(f)
+        # Coerce instead of trusting the file: one bad cell used to crash the run (turnover = close * volume on text).
+        # Unparsable values become NaN/NaT and are rejected, with a recorded issue, by check_frame below.
+        raw["date"] = pd.to_datetime(raw["date"], errors="coerce")
+        for col in ("open", "high", "low", "close", "volume"):
+            raw[col] = pd.to_numeric(raw[col], errors="coerce")
         if start:
             raw = raw[raw["date"] >= pd.Timestamp(start)]
         if end:
