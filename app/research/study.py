@@ -193,7 +193,7 @@ class Study:
     def period_of(self, d: pd.Series) -> pd.Series:
         out = pd.Series("", index=d.index, dtype=object)
         for name, (a, b) in self.cfg.periods.items():
-            end = pd.Timestamp(b) - pd.Timedelta(days=self.cfg.embargo_days)
+            end = pd.Timestamp(b) - pd.Timedelta(self.cfg.embargo_days, unit="D")
             out[(d >= pd.Timestamp(a)) & (d <= end)] = name
         return out
 
@@ -284,7 +284,7 @@ class Study:
             for y in years:
                 if y < 2019:
                     continue
-                cut = pd.Timestamp(f"{y}-01-01") - pd.Timedelta(days=self.cfg.embargo_days)
+                cut = pd.Timestamp(f"{y}-01-01") - pd.Timedelta(self.cfg.embargo_days, unit="D")
                 tr = (d < cut).to_numpy()
                 counts = np.isfinite(mat[tr]).sum(axis=0)
                 with warnings.catch_warnings():
@@ -410,7 +410,7 @@ class Study:
             o["y"] = o["reason"].isin(["TARGET", "TARGET_GAP"]).astype(int)
             dev = o[o["period"] == "dev"].sort_values("signal_date")
             cut = dev["signal_date"].quantile(0.8)
-            fit = dev[dev["signal_date"] < cut - pd.Timedelta(days=self.cfg.embargo_days)]
+            fit = dev[dev["signal_date"] < cut - pd.Timedelta(self.cfg.embargo_days, unit="D")]
             cal = dev[dev["signal_date"] >= cut]
             base_rate = float(dev["y"].mean())
             for name in ("logistic", "random_forest", "hist_gb"):

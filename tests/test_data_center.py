@@ -52,7 +52,7 @@ def test_warnings_jump_split_gap_zero_volume(bars):
     close = np.r_[np.full(10, 100.0), 50.0, 50.0, 80.0, 80.0]
     df = bars(close)
     df.loc[13, "volume"] = 0
-    df.loc[13, "date"] = pd.Timestamp(df.loc[13, "date"]) + pd.Timedelta(days=14)
+    df.loc[13, "date"] = pd.Timestamp(df.loc[13, "date"]) + pd.Timedelta(14, unit="D")
     rep = check_frame(df)
     by = {i["check"] for i in rep.issues}
     assert {"possible_corporate_action", "price_jump", "missing_trading_days", "zero_volume"} <= by

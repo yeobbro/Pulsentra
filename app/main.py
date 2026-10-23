@@ -405,7 +405,7 @@ def dart_sync(req: DartSyncRequest):
     try:
         codes = client.corp_codes()
         end = datetime.now().strftime("%Y%m%d")
-        start = (datetime.now() - pd.Timedelta(days=req.days)).strftime("%Y%m%d")
+        start = (datetime.now() - pd.Timedelta(req.days, unit="D")).strftime("%Y%m%d")
         saved, missing = 0, []
         for sym in req.symbols:
             info = codes.get(sym.strip())
