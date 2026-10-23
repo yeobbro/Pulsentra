@@ -85,8 +85,9 @@ def load_naver_raw(data_dir: str | Path, start: str | None = None, end: str | No
         hm = (raw["open"] == 0) & (raw["high"] == 0) & (raw["low"] == 0)
         flat0 = (raw["volume"] == 0) & (raw["open"] == raw["high"]) & (raw["high"] == raw["low"]) & (raw["low"] == raw["close"]) & (raw["close"] > 0)
         if hm.any() or flat0.any():
-            halts.append(pd.concat([raw.loc[hm, ["date"]].assign(kind="zero_ohl_marker"),
-                                    raw.loc[flat0, ["date"]].assign(kind="zero_volume_flat_bar")]).assign(symbol=row.symbol))
+            # concat only non-empty parts: an empty part makes pandas 2.3 + NumPy 2.5 emit a generic-timedelta warning
+            parts_h = [raw.loc[m, ["date"]].assign(kind=k) for m, k in ((hm, "zero_ohl_marker"), (flat0, "zero_volume_flat_bar")) if m.any()]
+            halts.append(pd.concat(parts_h).assign(symbol=row.symbol))
         raw = raw[~(hm | flat0)].copy()
         raw["market"] = "KR"
         raw["symbol"] = row.symbol

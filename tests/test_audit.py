@@ -212,3 +212,21 @@ def test_research_loader_survives_bad_cells_with_a_date_window(fx):
     bad = ds.issues[(ds.issues["symbol"] == "000100") & (ds.issues["check"] == "missing_value")]
     assert len(bad) == 1                                          # the 'abc' volume row, recorded and rejected
     assert pd.api.types.is_float_dtype(ds.bars["volume"]) or pd.api.types.is_integer_dtype(ds.bars["volume"])
+
+
+def test_all_zero_rows_follow_the_loader_rule(tmp_path):
+    """Regression: the loader drops O=H=L=0 rows whatever the close; the audit used to require close > 0 and
+    counted O=H=L=C=0 rows as non_positive_price errors instead, so its usable rows differed from the loader's."""
+    from app.research.data import load_naver_raw as research_loader
+    d = write_naver_raw(tmp_path / "data")
+    f = d / "raw" / "000010.csv"
+    df = pd.read_csv(f)
+    df.loc[[200, 201], ["open", "high", "low", "close", "volume"]] = 0
+    df.to_csv(f, index=False)
+    bars, uni, cal = load_raw_naver(d)
+    res = audit_frame(bars, AuditConfig(), cal, uni)
+    assert len(_f(res, "000010", "halt_marker_zero_ohl")) == 2 and _f(res, "000010", "non_positive_price").empty
+    ds = research_loader(d)
+    assert len(ds.halts[ds.halts["symbol"] == "000010"]) == 2
+    from app.data.audit import bars_fingerprint
+    assert bars_fingerprint(res.usable) == bars_fingerprint(ds.bars)

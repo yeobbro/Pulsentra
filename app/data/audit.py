@@ -178,10 +178,11 @@ def audit_symbol(raw: pd.DataFrame, cfg: AuditConfig, calendar: pd.DatetimeIndex
     # 1. provider halt markers (suspended sessions shown as bars)
     usable_in = work[ok_date].copy()
     if cfg.remove_halt_markers and len(usable_in):
-        hm = (usable_in["open"] == 0) & (usable_in["high"] == 0) & (usable_in["low"] == 0) & (usable_in["close"] > 0)
+        # exactly the research loader's rule (load_naver_raw): O=H=L=0 whatever the close, so both drop the same rows
+        hm = (usable_in["open"] == 0) & (usable_in["high"] == 0) & (usable_in["low"] == 0)
         flat0 = ((usable_in["volume"] == 0) & (usable_in["open"] == usable_in["high"]) & (usable_in["high"] == usable_in["low"])
                  & (usable_in["low"] == usable_in["close"]) & (usable_in["close"] > 0))
-        for mask, check, cause, obs in ((hm, "halt_marker_zero_ohl", "provider_halt_marker", "O=H=L=0, C>0"),
+        for mask, check, cause, obs in ((hm, "halt_marker_zero_ohl", "provider_halt_marker", "O=H=L=0"),
                                         (flat0, "halt_marker_flat_zero_volume", "suspended_session_filler", "O=H=L=C, V=0")):
             for a, b, n in _ranges(usable_in["date"], mask.to_numpy()):
                 exclusions.append({"symbol": sym, "start": a, "end": b, "rows": n, "scope": "row_removed", "reason": check})
