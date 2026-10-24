@@ -22,6 +22,8 @@ data/raw/
 data/cache/
 data/audit/
 data/crosscheck/
+data/krxcheck/
+reports/v0.4-compare/
 *.sqlite3
 *.sqlite3-journal
 *.db

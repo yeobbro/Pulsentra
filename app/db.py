@@ -133,6 +133,11 @@ def upsert_candles(df: pd.DataFrame, db_path: Path | str | None = None) -> int:
         working["turnover"] = working["close"] * working["volume"]
     if "source" not in working:
         working["source"] = "csv"
+    from app.data.schema import license_refusal   # the write itself refuses licence-restricted rows, whoever calls it
+    for src in working["source"].dropna().unique():
+        refusal = license_refusal(src)
+        if refusal:
+            raise ValueError(refusal)
     working["date"] = pd.to_datetime(working["date"], errors="raise").dt.strftime("%Y-%m-%d")
     for col in ["open", "high", "low", "close", "volume", "turnover"]:
         working[col] = pd.to_numeric(working[col], errors="raise")
