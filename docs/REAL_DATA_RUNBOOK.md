@@ -216,6 +216,29 @@ python -m app.krxcheck.fullmarket compare --krx-dir data/krxcheck/full_market_20
 - 2026-10-24 결과와 해석은 `docs/DATA_SOURCES.md`의 "2026-10-24 전체 시장 대조 결과"에 있습니다.
 - **라이선스:** KRX OPEN API 응답은 연구용 로컬 검증 자료로만 씁니다. 이용약관 제11조②(제3자 제공 금지)·제6조②(비상업적 이용) 때문에 앱 저장소 적재는 코드에서 거부됩니다(`app/data/schema.py`의 `license_refusal`. 적재 함수의 출처 인자, 표의 `source` 열, 쓰기 함수 `db.upsert_candles` 세 곳에서 대소문자·공백과 무관하게 확인). `source` 열을 지운 파일은 구별할 수 없습니다. 화면·API·다운로드로 외부에 제공하는 기능은 라이선스를 서면으로 확인하기 전까지 미구현입니다. 체크리스트와 질문 목록은 `docs/DATA_SOURCES.md`에 있습니다.
 
+## 2d. 여러 날짜 품질 리포트 (`python -m app.krxcheck.history`)
+
+이미 저장한 `fullmarket compare` 결과(`comparison_detail.csv`)만 읽어 날짜별 통계를 한 보고서로 묶습니다. KRX·네이버를 포함해 네트워크를 쓰지 않습니다. 입력 폴더와 `data/real/`에는 쓰지 않습니다.
+
+```
+# data/krxcheck/full_market_*/compare 전부
+python -m app.krxcheck.history --krx-root data/krxcheck --out data/krxcheck/history_<이름>
+# 폴더를 직접 지정
+python -m app.krxcheck.history --compare-dir data/krxcheck/full_market_20261022/compare data/krxcheck/full_market_20261023/compare --out data/krxcheck/history_<이름>
+```
+
+- `--out`이 비어 있지 않거나 입력 폴더 안·위에 있으면 거부합니다(종료 코드 2). 쓸 수 있는 날짜가 하나도 없으면 종료 코드 3입니다.
+- **산출물:** `history_by_date.csv`(날짜별 한 행), `history_samples.csv`(대표 사례), `history_summary.json`(전체), `HISTORY.md`.
+- **입력 점검:** 파일 없음(`missing`), 빈 파일(`empty`), 필수 열 누락·여러 날짜 혼재·알 수 없는 상태(`schema_error`), 같은 날짜를 두 번 받음(`duplicate_date`)은 `inputs`에 사유와 함께 기록하고, 통계에서 뺍니다. 값을 채워 넣지 않습니다. 날짜마다 `comparison_summary.json`과 행 수·상태 수가 맞는지(`summary_consistency`)도 확인합니다.
+- **분모:** 일치율은 날짜마다 비교 가능 행(`match` + `volume_mismatch_only` + `close_mismatch` + `ohl_mismatch_close_eq`)만 분모로 씁니다. 날짜끼리 합친 단일 일치율은 만들지 않습니다(서로 다른 표본).
+- **분류:** `by_status`·`exclusive`는 서로 겹치지 않습니다. `overlapping`의 가격 불일치(any)와 거래량 불일치(any)는 서로 겹칩니다. 비교 가능 행 안에서 같은 종목·날짜가 두 번 이상 나오면 `detail_duplicates`로 세고 일치율에서 뺍니다.
+- **봉 모양(`shape`, `pattern`):** 분류기가 수정주가 차이(`adjusted_price_basis`)로 설명한 행은 빼고, 네이버 봉이 KRX 봉보다 고가가 높은지·저가가 낮은지·거래량이 큰지 셉니다. `pattern`은 모양을 요약한 이름일 뿐 원인이 아닙니다.
+  - `range`: `equal` / `local_wider_or_equal` / `local_narrower_or_equal` / `mixed`
+  - `volume`: `equal` / `local_less_or_equal` / `local_more_or_equal` / `mixed`
+- **여러 날짜에 걸친 비교(`cross_date`):** 모든 날짜에 비교된 종목 수, 그중 수정주가로 설명되지 않는 불일치가 2개 날짜 이상에서 나온 종목 수, 마지막 두 날짜에 모두 불일치한 종목 수.
+- **대표 사례:** 날짜마다 005930, 설명되지 않는 종가 차이 상위 5개, 실제로 거래량이 다른 행 중 차이 상위 5개(`--top`).
+- **2026-10-24 결과:** `data/krxcheck/history_20261024_v3/` (Git 제외). 해석과 원인 미확정 사항은 `docs/DATA_SOURCES.md`의 "2026-10-24 전체 시장 대조 결과"에 있습니다.
+
 ## 3. 연구 재현과 차이 분리
 
 ```
