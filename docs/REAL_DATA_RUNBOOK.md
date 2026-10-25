@@ -1,6 +1,22 @@
 # 실제 데이터 검증 실행 절차 (Mac, v0.4 인계)
 
-v0.4 도구를 실제 데이터에 처음 적용하는 절차입니다. 이 문서를 쓸 때(2026-10-23)는 개발 환경에 `data/real/`과 API 키가 없어서, **아래 단계를 하나도 실제 데이터로 실행하지 않았습니다.** 각 단계의 "판정 기준"을 만족해야 그 단계가 완료된 것입니다.
+v0.4 도구를 실제 데이터에 적용하는 절차입니다. 처음 쓸 때(2026-10-23)는 개발 환경에 `data/real/`과 API 키가 없어 아무 단계도 실행하지 않았습니다. 각 단계의 "판정 기준"을 만족해야 그 단계가 완료된 것입니다.
+
+**실행 현황 (2026-10-25 갱신, 산출물은 모두 로컬·Git 제외)**
+
+| 단계 | 상태 | 산출물 |
+|---|---|---|
+| 1. 데이터 감사 | ✅ 2회 실행, 지문 일치 | `data/audit/full_20261024T060804Z_a`, `_b` |
+| 2. KIS 가격 대조 | ⬜ 미실행 (인증정보 없음) | — |
+| 2. OpenDART 공시 대조 | 🟡 삼성전자 1건만 | `data/crosscheck/dart_005930_20261025` 외 |
+| 2b. KRX 표본 대조 | ✅ 005930, 2026-10-22·23 | `data/krxcheck/live_005930_*` |
+| 2c. KRX 전체 시장 대조 | ✅ 4개 거래일(날짜별 1회 요청, 비교는 오프라인) | `data/krxcheck/full_market_*` |
+| 2d. 다중 거래일 리포트 | ✅ 2회 생성, 결과 동일 | `data/krxcheck/history_20261024_v3`, `history_mac_validation_20261024` |
+| 3a·3b. v0.3.0 코드와 v0.4 코드(`2edfc8b`) 비교 | ✅ `same_results: true` | `reports/v0.4-compare/` |
+| 3c. 감사·교차 검증 반영 재실행 | ⬜ 미실행 | — |
+| 3d. 비용 민감도 | ⬜ 미실행 | — |
+
+수치와 해석은 `docs/RESEARCH_V0_4.md` §6에 있습니다.
 
 **원칙**
 - 입력 데이터는 읽기만 합니다. 결과는 매번 새 폴더에 씁니다.
@@ -12,12 +28,12 @@ v0.4 도구를 실제 데이터에 처음 적용하는 절차입니다. 이 문�
 ```bash
 cd ~/Pulsentra                                   # 저장소 위치에 맞게
 git fetch origin
-git switch claude/hopeful-bardeen-pzn52a         # 또는 PR이 병합된 뒤 research/v0.4-data-audit
+git switch research/v0.4-data-audit             # PR #1·#2·#3 병합 후의 v0.4 통합 브랜치
 git status --short                               # 비어 있어야 함
 python3 --version                                # 3.12 이상이면 잠금 파일, 3.11이면 범위 설치
 python3 -m venv .venv && source .venv/bin/activate
 pip install -r requirements-lock.txt             # 3.11: pip install -r requirements-dev.txt -r requirements-research.txt
-python -m pytest -q -W error::DeprecationWarning # 기대: 168 passed, 2 skipped (실제 API 테스트는 건너뜀)
+python -m pytest -q -W error::DeprecationWarning # 2026-10-25 기준: 272 passed, 2 skipped, 1 warning (CI와 같은 엄격 모드, 실제 API 테스트 2개는 건너뜀)
 ```
 
 긴 실행 중 Mac이 잠들지 않게 하려면 명령 앞에 `caffeinate -i`를 붙이세요. 연구 실행에는 메모리 6GB 이상이 필요합니다(v0.3 기준).
@@ -289,4 +305,4 @@ python -m app.research --data DATA [--format {naver_raw,standard}] --out OUT [--
 ## 알려진 문제
 
 - 기본 기간 설정에서 어느 기간에 거래일이 하나도 없으면, 포트폴리오 단계가 `KeyError: 'halted_days'`로 중단됩니다. v0.3.0 코드와 현재 코드가 같습니다. 2016~현재 실제 데이터에서는 생기지 않으며, `--start`를 2022년 이후로 주면 생깁니다.
-- 감사 실행 시간과 메모리 사용량은 실제 규모에서 측정하지 않았습니다.
+- 감사 실행 시간은 실제 규모(600만 행)에서 92.7초·95.9초였습니다(`audit_manifest.json`의 `seconds`). 메모리 사용량은 측정하지 않았습니다.

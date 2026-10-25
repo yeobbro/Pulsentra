@@ -15,7 +15,7 @@ python -m app.audit --compare data/audit/A data/audit/B             # 재실행 
 python -m app.research --data data/real --format naver_raw --out reports/v0.4 --audit data/audit/2026-10-23   # 감사 결과를 연구에 반영
 ```
 
-규모: 합성 데이터 78만 행(300종목 × 2,600거래일)에 23초가 걸렸습니다. 같은 비율이면 v0.3 규모(580만 행)에서 약 3분입니다. 실제 데이터로는 측정하지 못했습니다.
+규모: 합성 데이터 78만 행(300종목 × 2,600거래일)에 23초가 걸렸습니다. 실제 데이터(원본 600만 행, 2,824종목)에서는 92.7초·95.9초였습니다(2026-10-24, `audit_manifest.json`의 `seconds`). 메모리 사용량은 측정하지 않았습니다.
 
 ## 출력
 
@@ -113,4 +113,5 @@ CLI에서 `--jump-threshold`, `--volume-break-factor`, `--no-gap-volume-shift`�
 ## 검증 상태
 
 - **합성 데이터로 검증함**(`tests/test_audit.py`, 20개 함수): 위 표의 모든 검사, 전후 값 기록, 제외 구간, 기업행동 후보, 로더와의 행 일치, 재실행 지문 일치, 출력 폴더 보호
-- **실제 데이터로 검증하지 않음**: 이 개발 환경에는 `data/real/`이 없습니다. v0.3 보고서의 수치(`non_positive_price` 1,461행·1종목, `ohlc_inconsistent` 179행·23종목, `volume_level_break` 1,991건·559종목, `price_jump` 2,454행, 반올림 보정 24,379행)가 재현되는지, 원인이 무엇인지는 실제 데이터로 감사를 실행해야 알 수 있습니다.
+- **실제 데이터로 실행함(2026-10-24, 2회)**: `data/audit/full_20261024T060804Z_a`, `_b`. v0.3 보고서의 수치(`non_positive_price` 1,461행·1종목, `ohlc_inconsistent` 179행·23종목, `volume_level_break` 1,991건·559종목, `price_jump` 2,454행, 반올림 보정 24,379행)가 그대로 재현됐고, 두 실행의 지문이 같습니다. 종목 상태: ok 597 / review 2,225 / exclude 2.
+- **아직 하지 않은 것**: 이상의 원인 확인(예: `non_positive_price`가 몰린 084440), `review` 종목 검토, 감사 결과를 반영한 연구 재실행(`--audit`).
