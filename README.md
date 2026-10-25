@@ -7,6 +7,21 @@ Pulsentra는 종목을 추천하는 서비스가 아닙니다. 시장 데이터�
 
 > 실제 주문 기능은 없습니다. 신호 점수와 모델 확률은 수익을 보장하지 않습니다.
 > v0.3부터 실제 한국 주식 일봉(2016~2026, 상장폐지 종목 포함)으로 검증한 결과가 `reports/v0.3/`에 있습니다. 검증한 전략 중 거래비용 후 일관된 우위를 보인 것은 없었습니다. 자세한 현황은 [`docs/PULSENTRA_STATUS.md`](docs/PULSENTRA_STATUS.md)를 보세요.
+> 현재까지 시장 대비 지속 가능한 우위(Alpha)를 입증한 전략은 **없습니다.** 결과 상태 `VERIFIED`도 정해진 검증 항목을 통과했다는 뜻일 뿐, 수익이나 미래 성과를 보장하지 않습니다.
+
+## 현재 상태 한눈에 보기 (2026-10-25, 브랜치 `research/v0.4-data-audit`)
+
+| 구분 | 내용 | 근거 |
+|---|---|---|
+| **실행·확인함** | v0.4 데이터 감사 도구 구현, 실제 데이터 감사 2회 실행 — 두 실행의 핵심 산출물·지문 일치 | `data/audit/full_20261024T060804Z_a`, `_b` |
+| | v0.3.0 코드(`a57dcc1`)와 v0.4 코드(`2edfc8b`)를 같은 실제 데이터로 실행 → 결과 동일(`same_results: true`), v0.3 결론(비용 차감 후 validation·test 480개 조합 중 양수 0개) 재확인. 원래 v0.3 실행 커밋 `4918af9`는 저장소에 없어, 원래 실행 코드와의 동일성은 증명하지 못함 | `reports/v0.4-compare/` (Git 제외) |
+| | 저장된 KRX OPEN API 응답(유가증권, 날짜별 1회 요청)과 로컬 네이버 일봉의 4개 거래일 비교 | `data/krxcheck/full_market_*`, `history_*` |
+| | OpenDART 대조 1건(삼성전자 2018 주식분할, 50:1 원문 확인), 원 공시·정정 공시 중복 매칭 개선 | `data/crosscheck/dart_005930_*` |
+| | 다중 거래일 품질 리포트(`python -m app.krxcheck.history`)와 자동 테스트 | `tests/test_krx_history.py` |
+| | 전체 테스트 `272 passed, 2 skipped, 1 warning` (경고: Starlette TestClient의 `StarletteDeprecationWarning`) | 아래 "테스트" |
+| **미실행·미확인** | KIS 가격 교차 검증(인증정보 없음), 나머지 기업행동 후보 8,072건의 공시 대조, 2026-10-22·23 KRX·네이버 차이의 원인, 배당·총수익 반영, 기업행동 자동 보정, 감사·교차 검증 결과를 반영한 v0.3 전략 재실행(`--audit --crosscheck`), 새로운 Alpha 결론, 데이터 이용 권한과 외부 제공 범위 | [`docs/PULSENTRA_STATUS.md`](docs/PULSENTRA_STATUS.md) |
+
+테스트 통과는 코드가 정해진 동작을 한다는 뜻이고, 실제 데이터로 전략이 검증됐다는 뜻이 아닙니다. 다음 목표는 **Pulsentra Alpha Research Lab v1**입니다([`docs/IMPLEMENTATION_ROADMAP.md`](docs/IMPLEMENTATION_ROADMAP.md)).
 
 ## v0.4 (진행 중) — 데이터 감사·재현성·교차 검증
 
@@ -24,11 +39,11 @@ python -m app.research --data data/real --format naver_raw --out reports/v0.4 \
 - **실제 데이터 검증 절차(Mac): [`docs/REAL_DATA_RUNBOOK.md`](docs/REAL_DATA_RUNBOOK.md)**
 - 설치·테스트·재현: [`docs/SETUP.md`](docs/SETUP.md) · 구조·방법론·평가 기준: [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md)
 - 모든 연구 실행은 결과 상태(INELIGIBLE / PROVISIONAL / VERIFIED)와 그 근거를 `run_manifest.json`과 `REPORT.md`에 남깁니다.
-- **미실행:** 이 개발 환경에는 실제 데이터와 API 키가 없어, 실제 데이터 감사와 KIS·OpenDART 대조는 아직 실행하지 않았습니다.
+- **실행 범위(2026-10-25):** 실제 데이터 감사 2회, v0.3.0 코드와 v0.4 코드(`2edfc8b`)의 실제 데이터 비교, KRX 4개 거래일 대조, OpenDART 1건 대조를 실행했습니다. KIS 대조는 인증정보가 없어 실행하지 않았고, `--audit --crosscheck`를 반영한 연구 재실행도 하지 않았습니다. KRX·OpenDART 응답은 연구용 로컬 검증 자료이며 외부에 제공하지 않습니다([`docs/DATA_SOURCES.md`](docs/DATA_SOURCES.md)).
 
 ## v0.3 — 실제 데이터 전략 검증
 
-v0.3은 기능 추가가 아니라 **실제 과거 주가로 기존 전략을 검증**하는 단계입니다.
+v0.3은 기능 추가가 아니라 **실제 과거 주가로 기존 전략을 검증**하는 단계입니다. 결론(비용 차감 후 validation·test 양쪽에서 우위가 있는 조합 없음)은 2026-10-24에 v0.3.0 코드로 같은 실제 데이터를 다시 실행해 재확인했습니다. 원래 v0.3 실행 커밋 `4918af9`는 저장소에 없으므로, 원래 실행 코드와의 동일성은 증명되지 않았습니다. 감사 결과를 반영한 재실행은 아직 하지 않았습니다.
 
 ```bash
 pip install -r requirements.txt -r requirements-research.txt
@@ -54,12 +69,12 @@ python -m app.research --data my_csv_dir --format standard --out reports/mine
 | Strategy Lab | 전략 10종(플러그인), 손절(ATR·스윙 저점·고정 %), 익절(R 배수·일부 익절+추적·이평 이탈·ATR 추적·시간), 위험 설정 | 구현 (공시 이벤트 전략은 미구현으로 표시) |
 | Backtest Engine | 포트폴리오 시뮬레이션: 다음 날 시가 체결, 같은 봉 손절 우선, 갭, 현금·보유 수·업종 한도, 일일 손실·낙폭 중단, 상장폐지 처리, 비용·세금·슬리피지 | 구현 |
 | 검증 | 비용 전·후, 벤치마크·무작위 진입 기준, 월별·연도별, 국면별, 승률·기대값 신뢰구간, 표본 경고, 청산 규칙 공정 비교, 워크포워드 파라미터 선택 | 구현 |
-| ML Model Lab | 삼중 장벽(익절·손절·기간) / 1·5·20·60·252일 방향, 로지스틱·랜덤포레스트·HistGB vs 기준 확률·단순 규칙, 퍼지된 워크포워드, 확률 보정, 누수 검사, 채택 게이트, 모델 기록 | 구현 (실데이터 검증 전, 채택 모델 없음) |
+| ML Model Lab | 삼중 장벽(익절·손절·기간) / 1·5·20·60·252일 방향, 로지스틱·랜덤포레스트·HistGB vs 기준 확률·단순 규칙, 퍼지된 워크포워드, 확률 보정, 누수 검사, 채택 게이트, 모델 기록 | 구현 (v0.3 실데이터에서 ML 필터 15개 비교 모두 채택 기준 불통과, 채택 모델 없음) |
 | Paper Trading | 종가 기준 가상 계좌·주문(시장가/지정가, 만료·거부), 손절·익절·시간 청산, 백테스트와 비교 | 구현 |
 | Alerts | 거래량·횡보·돌파·추세 이탈·손절/익절 근접·데이터 지연/오류·공시 위험, 중복 방지, 입력값 저장 | 구현 (종가 기준) |
 | 실시간 | 틱→1·5분봉 집계, 수신 지연 판정 | 일부 구현. KIS WebSocket 클라이언트는 미구현 |
-| OpenDART | 고유번호·공시 목록 어댑터, 희석 위험 분류 | 구현 (모의 응답으로만 테스트) |
-| KRX OPEN API | — | 미구현 |
+| OpenDART | 고유번호·공시 목록 어댑터, 희석 위험 분류, 기업행동 후보와 공시 매칭(원 공시·정정 공시를 한 기업행동으로 묶음) | 구현. 실제 호출은 삼성전자 1건만(2026-10-25) |
+| KRX OPEN API | 일별매매정보 연구용 대조(`python -m app.krxcheck`, `.fullmarket`, `.history`), 앱 저장소 적재 차단 | 연구용 로컬 검증만 구현. 화면·API로 외부 제공하는 기능은 이용약관(제3자 제공 금지) 때문에 미구현 |
 
 ## 설치와 실행 (macOS / Linux, Python 3.11+)
 
@@ -82,6 +97,8 @@ python -m pytest -q -W error::DeprecationWarning  # CI와 같은 엄격 모드
 ```
 
 실제 API를 부르는 테스트는 `integration` 마커가 붙어 있고, `PULSENTRA_RUN_INTEGRATION=1`과 키가 있을 때만 실행됩니다.
+
+최근 결과(2026-10-25, `research/v0.4-data-audit` `2292168`): `python -m pytest -q` → **272 passed, 2 skipped, 1 warning**. Mac Python 3.14.6(사용자 실행)과 Linux Python 3.10에서 같은 결과입니다. 건너뛴 2개는 키가 필요한 실제 API 스모크 테스트이고, 경고 1건은 `starlette.testclient`의 `httpx` 사용 방식에 대한 `StarletteDeprecationWarning`입니다.
 
 ## 처음 사용하는 순서
 
@@ -125,6 +142,7 @@ app/
   data/              데이터 표준, 품질 검사(quality), 종목 단위 감사(audit), 적재 기록, 데이터 상태
   audit/             감사 CLI (python -m app.audit)
   crosscheck/        공식 출처 교차 검증 CLI (python -m app.crosscheck)
+  krxcheck/          KRX 시세 대조 CLI (표본·전체 시장·다중 거래일 리포트, 연구용 로컬 전용)
   research/          리서치 로더·연구·보고서, manifest(재현 정보), validity(결과 상태), crosscheck(비교 로직)
   providers/         KIS(시세), OpenDART(공시), http(재시도 상한)
   indicators.py      인과적 지표 (+ INDICATOR_SPECS 계산식)

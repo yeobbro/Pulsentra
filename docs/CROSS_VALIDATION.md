@@ -5,11 +5,12 @@
 | 검증 | 코드 | 오프라인 테스트 | 실제 실행 |
 |---|---|---|---|
 | 네이버 일봉 ↔ KIS 일봉 (종가·거래량·거래일·누락률·수정 기준 차이) | `app/research/crosscheck.py` `compare_daily`, 실행기 `python -m app.crosscheck` | 합성 시계열·가짜 클라이언트 | **실행 안 함** — KIS 키 없음 |
-| 기업행동 후보 ↔ OpenDART 공시 | `match_corporate_actions`, `DartClient.disclosures` | 모의 응답 | **실행 안 함** — DART 키 없음 |
+| 기업행동 후보 ↔ OpenDART 공시 | `match_corporate_actions`(원 공시·정정 공시를 `group_filings`로 묶음), `DartClient.disclosures` | 모의 응답·합성 공시 | 🟡 **삼성전자 1건만** 실행(2026-10-25, `data/crosscheck/dart_005930_*`). 나머지 후보 8,072건 미실행 |
+| 네이버 일봉 ↔ KRX OPEN API 일별매매정보 | `app/krxcheck/`(표본·전체 시장·다중 거래일), `app/research/krx_crosscheck.py` | 모의 응답·TEST 데이터 | ✅ 4개 거래일(날짜별 1회 요청, 비교는 저장된 응답으로 오프라인). 결과는 `docs/DATA_SOURCES.md`·`docs/RESEARCH_V0_4.md` §6 |
 | KIS가 표시한 일별 기업행동 필드(`prtt_rate` 등) | `parse_daily_rows`가 원문 그대로 보존, 실행기가 `kis_event_days_*.csv`로 저장 | 모의 응답 | **실행 안 함** |
 | 상장폐지 목록 완전성 | `compare_listings` (참조 목록과 비교) | 합성 목록 | **실행 안 함** — 참조 목록(KRX KIND 등) 없음 |
 
-키를 받았다고 가정하거나 결과를 만들어 넣지 않았습니다. 실행기는 키가 없으면 그 단계를 건너뛰고, 건너뛴 이유를 `crosscheck_status.json`에 남깁니다(종료 코드 3).
+KIS 행은 2026-10-25 현재도 **실행 안 함**(인증정보 없음)입니다. 키를 받았다고 가정하거나 결과를 만들어 넣지 않았습니다. 실행기는 키가 없으면 그 단계를 건너뛰고, 건너뛴 이유를 `crosscheck_status.json`에 남깁니다(종료 코드 3).
 
 ## API 설정
 
