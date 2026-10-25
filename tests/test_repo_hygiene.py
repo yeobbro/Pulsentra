@@ -16,7 +16,7 @@ def _git(*args: str) -> str:
 
 @pytest.mark.skipif(not HAS_GIT, reason="not a git checkout")
 @pytest.mark.parametrize("path", [".env", ".env.local", ".env.production", "data/real/raw/005930.csv", "data/real/universe.csv",
-                                  "data/raw/x.csv", "data/cache/x.json", "data/audit/run/findings.csv", "data/crosscheck/run/a.csv",
+                                  "data/raw/x.csv", "data/cache/x.json", "data/audit/run/findings.csv", "data/crosscheck/run/a.csv", "data/krxcheck/run/plan.json",
                                   "data/market_signal_lab.sqlite3", "data/models/m.joblib", "local.db",
                                   "reports/v0.4/strategy_exit_grid.csv", "reports/v0.4/trades/portfolio_a.csv", "reports/x/a.parquet"])
 def test_sensitive_paths_are_ignored(path):
@@ -40,6 +40,6 @@ def test_no_secrets_or_data_are_tracked():
 
 def test_env_example_has_no_values_for_keys():
     text = (ROOT / ".env.example").read_text(encoding="utf-8")
-    for key in ("KIS_APP_KEY", "KIS_APP_SECRET", "DART_API_KEY"):
+    for key in ("KIS_APP_KEY", "KIS_APP_SECRET", "DART_API_KEY", "KRX_API_KEY"):
         m = re.search(rf"^{key}=(.*)$", text, re.M)
         assert m and m.group(1).strip() == "", key

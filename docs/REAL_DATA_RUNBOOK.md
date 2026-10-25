@@ -147,8 +147,79 @@ PULSENTRA_RUN_INTEGRATION=1 python -m pytest -m integration -q     # (선택) �
 - **가격**: `price_check.passed`는 모든 표본이 `consistent` 또는 `adjustment_basis_differs`일 때만 참입니다. `record_errors`가 있는 종목은 날짜별 상세 CSV로 원인을 확인합니다.
 - **거래량**: `volume_ratio_median`과 분할 이전 구간의 비율로, 네이버 거래량이 미수정인지 확인합니다.
 - **KIS 필드 해석**: `kis_event_days_*.csv`의 날짜가 감사 후보와 겹치는지 봅니다. 이 결과를 근거로 `flng_cls_code`와 `prtt_rate`의 의미를 문서화합니다(지금은 해석하지 않음).
-- **공시**: `filing_check.passed`는 모든 후보가 `confirmed_kind_match`이고 회사코드 누락이 없을 때만 참입니다. `undetected_event` 건수는 감사가 놓친 이벤트 수입니다.
+- **공시**: `filing_check.passed`는 모든 후보가 `confirmed_kind_match`이고 회사코드 누락이 없을 때만 참입니다(`ambiguous`는 통과가 아님). `undetected_event` 건수는 감사가 놓친 **기업행동** 수입니다(공시 문서 수가 아님).
+- **원 공시와 정정 공시(2026-10-25 변경)**: OpenDART 개발가이드에서 `[기재정정]`·`[첨부정정]`·`[첨부추가]`·`[발행조건확정]`은 "본 보고서명으로 이미 제출된 보고서"를 다시 낸 것이고, `rm`의 `정`은 "본 보고서 제출 후 정정신고가 있음"입니다. 그래서 공시를 먼저 기업행동 단위로 묶습니다(`app/research/crosscheck.py`의 `group_filings`).
+  - 정정 공시는 같은 종목·같은 보고서명(앞의 대괄호 표시 제외)의 이전 원 공시가 365일 안에 **하나뿐일 때만** 그 원 공시에 연결합니다. 여러 개면 `rm`에 `정`이 붙은 것이 하나일 때만 연결하고, 아니면 `ambiguous`로 남깁니다. 원 공시 두 건은 합치지 않습니다.
+  - 원 공시가 없는 정정 공시는 혼자 하나의 기업행동이 됩니다(`link_basis=correction_without_original`).
+  - 후보는 기업행동에 매칭되고(가까운 문서 기준), 매칭되지 않은 기업행동은 한 번만 `undetected_event`로 나옵니다. 여러 후보가 같은 기업행동에 매칭되는 것은 예전처럼 허용합니다. 맞는 종류의 서로 다른 기업행동이 같은 거리에 있으면 `ambiguous`입니다.
+  - **스키마 변경(하위 호환)**: `corporate_action_matches.csv`의 기존 열(`symbol, date, kind, status, filing, filing_kind, filed, days_before_event`)과 의미는 그대로이고, `action_id, action_documents, rcept_nos, action_filings, link_basis` 열과 상태 `ambiguous`가 추가됐습니다. `filings.csv`에는 `rm` 열이 추가됩니다. `crosscheck_status.json`의 `filing_check`에 `corporate_action_documents`(문서 수)·`corporate_actions`(기업행동 수)·`share_base_actions`가 추가됩니다. 이전 실행의 `filings.csv`에는 `rm`이 없으므로 그때는 보고서명 규칙만으로 연결합니다.
 - **알려진 한계**: 상장폐지 종목은 OpenDART `corpCode`에 종목코드가 없을 수 있습니다(`no_corp_code`에 기록).
+
+## 2b. KRX 공식 시세 대조 (`python -m app.krxcheck`, KIS 없이)
+
+KIS 경로(`app.crosscheck`)와 별개입니다. KRX 일별 서비스는 **기준일 하루의 시장 전체**를 한 번에 돌려주므로, 요청 수는 "날짜 수 × 필요한 시장 수"입니다. 종목 수와는 무관합니다.
+
+- **필요한 환경변수**: `KRX_API_KEY`(필수), `KRX_TIMEOUT_SECONDS`(기본 20), `KRX_MIN_INTERVAL_SECONDS`(기본 0.5). `--dart`를 쓸 때만 `DART_API_KEY`.
+- **안전장치**:
+  - `--live`가 없으면 `plan.json`만 쓰고 네트워크를 쓰지 않습니다.
+  - `--live`에는 `--spec-confirmed`가 함께 있어야 합니다. `app/providers/krx.py`의 `SERVICES`를 공식 명세와 대조한 뒤에만 붙이세요.
+  - 계획이 `--max-requests`(기본 6)를 넘으면 실행을 거부합니다.
+  - 인증 실패(401·403)나 한도 초과(429)가 나오면 즉시 멈추고 종료 코드 4를 냅니다.
+- **산출물** (`data/krxcheck/<run>/`, Git 제외):
+  - `plan.json`
+  - `krx_<service>_<basDd>.csv`: 표본 종목 행만
+  - `comparison_detail.csv`
+  - `krxcheck_status.json`
+  - 후보를 지정했을 때: `corporate_action_matches.csv`, `candidate_verdicts.csv`, `dart_filings.csv`
+- **상태값**:
+
+| status | 뜻 |
+|---|---|
+| `match` | OHLC가 같고 거래량이 **정확히** 같음(주 단위, 허용 오차 없음) |
+| `adjusted_price_basis` | OHLC 네 가격이 **모두 같은 방향으로, 같은 비율로** 다름(하나라도 같거나 방향이 섞이면 해당 없음). 수정주가 기준 차이이며, `split_like_ratio`가 있으면 분할로 보이는 비율. 일부 필드만 같고 나머지가 1호가 다르면 조정이 아니라 `price_mismatch`(2026-10-24 수정) |
+| `price_mismatch`, `volume_mismatch` | 실제 불일치 |
+| `missing_in_krx`, `missing_in_primary` | 한쪽에만 데이터가 있음 |
+| `not_comparable` | 양쪽 모두 없음, 거래정지 표시 행, 거래가 없는 날, 또는 한쪽에 같은 종목·날짜의 행이 둘 이상(중복 행) |
+| `krx_day_empty` | KRX가 빈 응답을 줌 |
+| `request_failed` | 요청 실패 |
+
+- **판정 기준**: `krx.passed`는 비교 가능한 쌍이 있고, `price_mismatch`·`volume_mismatch`가 0일 때만 참입니다. 후보의 `verified`는 **같은 종류의 OpenDART 공시와 KRX 가격 단계가 모두 맞을 때만** 나옵니다. 나머지는 이유와 함께 `unverified`로 남습니다.
+- **삼성전자 005930, 2018-05-04 후보**: 공시와 KRX 자료로 실제 확인하기 전까지는 확정하지 않습니다. 분할 전에 거래정지가 있었다면, "직전일"은 마지막으로 실제 일봉이 있는 날로 자동 선택됩니다.
+
+## 2c. KRX 전체 시장 대조 (`python -m app.krxcheck.fullmarket`)
+
+한 날짜의 **시장 전체**를 KRX에서 한 번만 받아 보관하고, 비교는 로컬 파일로만 반복합니다. 표본 대조(2b)가 고른 몇 종목만 보는 것과 달리 그날 KRX에 있는 모든 종목을 봅니다.
+
+```
+# 1) 받기: 요청 1회, 재시도 없음. --out이 비어 있지 않으면 거부(같은 날짜 중복 호출 방지)
+python -m app.krxcheck.fullmarket fetch --date 2026-10-23 --market KOSPI --out data/krxcheck/full_market_20261023 --live --spec-confirmed
+# 2) 비교: 네트워크 없음, data/real에는 쓰지 않음. 기본 출력은 <krx-dir>/compare
+python -m app.krxcheck.fullmarket compare --krx-dir data/krxcheck/full_market_20261023 --data data/real --date 2026-10-23
+```
+
+- `--live --spec-confirmed`가 없으면 보낼 요청 1건만 출력하고 아무것도 받지 않습니다.
+- KRX는 가장 최근 거래일을 **다음 날 08시 이후**에만 돌려줍니다(공식 서비스 정의). 그 전에 부르면 빈 응답(종료 코드 5)입니다.
+- **fetch 산출물:** `krx_raw_<service>_<basDd>.csv`(응답 원문, 모든 값 문자열), `krx_<service>_<basDd>.csv`(정규화), `fetch_meta.json`(요청·수신 시각, 행 수, 중복·불량 코드 수, 파일 SHA-256, 완전성 메모). 실패하면 `error.json`(오류 종류, 시도 횟수). 키는 어디에도 쓰지 않습니다.
+- **compare 산출물:** `comparison_detail.csv`(KRX 행마다 1행: 양쪽 OHLCV, 필드별 일치 여부, 종가 차이, 거래량 차이와 비율, 상태, 사유, 기존 표본 분류기의 판정 `classifier_status`), `comparison_summary.json`, `COMPARISON.md`.
+- **상태(서로 겹치지 않음, 위에서부터 먼저 해당하는 것):**
+
+| status | 뜻 |
+|---|---|
+| `krx_row_invalid` | KRX 행의 코드가 쓸 수 없음, 같은 코드가 응답에 두 번 이상, 또는 숫자가 아닌 값 |
+| `missing_local_file` | `raw/<코드>.csv` 없음. `in_universe`로 수집 누락인지 수집 범위 밖(우선주·리츠 등)인지 구분 |
+| `local_row_invalid` | 로컬 파일에 그 날짜가 두 번 이상이거나 값이 비었거나 숫자가 아님 |
+| `missing_local_date` | 로컬 파일에 그 날짜 행이 없음 |
+| `not_comparable` | 한쪽에 거래가 없음(KRX 거래량 0·가격 없음, 로컬 거래정지 표시 행) |
+| `match` | O·H·L·C·거래량 모두 같음 |
+| `volume_mismatch_only` | 가격 4개는 같고 거래량만 다름 |
+| `close_mismatch` | 종가가 다름(다른 필드는 `*_equal` 열 참고) |
+| `ohl_mismatch_close_eq` | 종가는 같고 시가·고가·저가 중 하나 이상이 다름 |
+
+- "OHLC 불일치(전체)" = `close_mismatch` + `ohl_mismatch_close_eq`이며, 요약에 겹치는 합계로 따로 적습니다.
+- 일치율의 분모는 비교 가능 행(`match` + `volume_mismatch_only` + `close_mismatch` + `ohl_mismatch_close_eq`)이고, 요약에 분모를 항상 함께 적습니다.
+- 일치 기준은 **정확히 같음**(원 단위 가격, 주 단위 거래량)입니다. 과거 날짜는 네이버가 수정주가라서 기업행동이 있었던 종목이 `close_mismatch`로 나옵니다. 이런 행은 `classifier_status=adjusted_price_basis`로 구분됩니다.
+- 2026-10-24 결과와 해석은 `docs/DATA_SOURCES.md`의 "2026-10-24 전체 시장 대조 결과"에 있습니다.
+- **라이선스:** KRX OPEN API 응답은 연구용 로컬 검증 자료로만 씁니다. 이용약관 제11조②(제3자 제공 금지)·제6조②(비상업적 이용) 때문에 앱 저장소 적재는 코드에서 거부됩니다(`app/data/schema.py`의 `license_refusal`. 적재 함수의 출처 인자, 표의 `source` 열, 쓰기 함수 `db.upsert_candles` 세 곳에서 대소문자·공백과 무관하게 확인). `source` 열을 지운 파일은 구별할 수 없습니다. 화면·API·다운로드로 외부에 제공하는 기능은 라이선스를 서면으로 확인하기 전까지 미구현입니다. 체크리스트와 질문 목록은 `docs/DATA_SOURCES.md`에 있습니다.
 
 ## 3. 연구 재현과 차이 분리
 

@@ -6,7 +6,7 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from app.research.crosscheck import compare_daily, compare_listings, factor_segments, match_corporate_actions
+from app.research.crosscheck import compare_daily, compare_listings, factor_segments, group_filings, match_corporate_actions
 from tests.audit_fixtures import write_naver_raw
 
 
@@ -188,3 +188,86 @@ def test_runner_refuses_to_overwrite_results_or_write_into_data(tmp_path):
     assert (out / "crosscheck_status.json").read_text() == "{}"
     assert run(["--data", str(d), "--out", str(d / "raw" / "cc")], Unconfigured(), Unconfigured()) == 2
     assert run(["--data", str(d), "--out", str(out), "--overwrite"], Unconfigured(), Unconfigured()) == 3
+
+
+# --------------------------------------------------------------------------- corporate actions: original + corrections
+# Synthetic filings shaped like OpenDART list.json rows (005930 2018 split: 주식분할결정 2018-01-31, [기재정정] 2018-03-16).
+
+def _f(no, dt, nm, kind="split", sym="005930", rm=None):
+    return {"symbol": sym, "rcept_no": no, "rcept_dt": dt, "report_nm": nm, "corporate_action": kind, "rm": rm}
+
+
+ORIG = _f("20180131800068", "20180131", "주식분할결정")
+CORR = _f("20180316800856", "20180316", "[기재정정]주식분할결정")
+CAND = pd.DataFrame({"symbol": ["005930"], "date": ["2018-05-04"], "kind": ["volume_level_break"]})
+
+
+def test_original_and_correction_are_one_action_for_the_candidate():
+    m = match_corporate_actions(CAND, pd.DataFrame([ORIG, CORR]))
+    assert len(m) == 1                                                   # no separate row for the original
+    r = m.iloc[0]
+    assert r["status"] == "confirmed_kind_match" and r["action_documents"] == 2
+    assert r["rcept_nos"] == "20180131800068|20180316800856" and r["action_filings"] == "주식분할결정|[기재정정]주식분할결정"
+    assert r["link_basis"] == "official_correction_prefix"
+    assert r["filing"] == "[기재정정]주식분할결정" and r["days_before_event"] == 49     # nearest document, as before
+
+
+def test_unmatched_original_and_correction_count_as_one_undetected_event():
+    m = match_corporate_actions(CAND.iloc[0:0], pd.DataFrame([ORIG, CORR]))
+    assert list(m["status"]) == ["undetected_event"] and m.iloc[0]["action_documents"] == 2
+    assert m.iloc[0]["filing"] == "주식분할결정"                          # represented by the original
+
+
+def test_two_separate_actions_are_not_merged():
+    other = _f("20210301000001", "20210301", "주식분할결정")              # a second split three years later
+    m = match_corporate_actions(CAND, pd.DataFrame([ORIG, CORR, other]))
+    assert set(m["status"]) == {"confirmed_kind_match", "undetected_event"}
+    und = m[m["status"] == "undetected_event"].iloc[0]
+    assert und["rcept_nos"] == "20210301000001" and und["action_documents"] == 1
+    assert m[m["status"] == "confirmed_kind_match"].iloc[0]["action_documents"] == 2
+
+
+def test_correction_only():
+    m = match_corporate_actions(CAND, pd.DataFrame([CORR]))
+    r = m.iloc[0]
+    assert len(m) == 1 and r["status"] == "confirmed_kind_match" and r["action_documents"] == 1
+    assert r["link_basis"] == "correction_without_original"
+
+
+def test_original_only():
+    m = match_corporate_actions(CAND, pd.DataFrame([ORIG]))
+    r = m.iloc[0]
+    assert len(m) == 1 and r["status"] == "confirmed_kind_match" and r["link_basis"] == "original" and r["action_documents"] == 1
+
+
+def test_several_candidates_may_share_one_action_as_before():
+    cand = pd.DataFrame({"symbol": ["005930", "005930"], "date": ["2018-05-04", "2018-05-07"], "kind": ["volume_level_break", "split"]})
+    m = match_corporate_actions(cand, pd.DataFrame([ORIG, CORR]))
+    assert len(m) == 2 and set(m["status"]) == {"confirmed_kind_match"} and m["action_id"].nunique() == 1
+
+
+def test_weak_evidence_is_not_confirmed():
+    # two possible originals within the link window: the correction cannot be attached to either
+    a = _f("20180110000001", "20180110", "주식분할결정")
+    m = match_corporate_actions(CAND, pd.DataFrame([a, ORIG, CORR]))
+    r = m[m["kind"].notna()].iloc[0]
+    assert r["status"] == "ambiguous"
+    groups = group_filings(pd.DataFrame([a, ORIG, CORR]))
+    assert groups.loc[groups["rcept_no"] == CORR["rcept_no"], "link_basis"].iloc[0].startswith("ambiguous")
+    # ... unless OpenDART's own rm '정' marks exactly one of them as the corrected report
+    g2 = group_filings(pd.DataFrame([a, {**ORIG, "rm": "유정"}, CORR]))
+    linked = g2.set_index("rcept_no")
+    assert linked.at[CORR["rcept_no"], "action_id"] == linked.at[ORIG["rcept_no"], "action_id"]
+    assert linked.at[CORR["rcept_no"], "link_basis"] == "official_correction_prefix+rm_정"
+    # a correction of a different report name is not linked to a split decision
+    g3 = group_filings(pd.DataFrame([ORIG, _f("20180316000002", "20180316", "[기재정정]주식병합결정", kind="merge")]))
+    assert g3["action_id"].nunique() == 2
+    # an original filed more than a year before the correction is not linked
+    g4 = group_filings(pd.DataFrame([_f("20160101000001", "20160104", "주식분할결정"), CORR]))
+    assert g4["action_id"].nunique() == 2
+
+
+def test_two_fitting_actions_equally_close_are_ambiguous():
+    cand = pd.DataFrame({"symbol": ["A"], "date": ["2024-05-10"], "kind": ["volume_level_break"]})
+    f = pd.DataFrame([_f("1", "20240501", "주식분할결정", sym="A"), _f("2", "20240519", "무상증자결정", kind="bonus_issue", sym="A")])
+    assert match_corporate_actions(cand, f).iloc[0]["status"] == "ambiguous"

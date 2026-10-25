@@ -239,7 +239,8 @@ def _provider_status() -> dict:
             {"name": "OpenDART (공시 목록)", "configured": dart.configured, "implemented": True,
              "status": "READY" if dart.configured else "NOT_CONFIGURED"},
             {"name": "KRX OPEN API", "configured": False, "implemented": False, "status": "NOT_IMPLEMENTED",
-             "note": "이용 계약·엔드포인트 확인 후 구현 예정"},
+             "note": "연구용 로컬 검증(python -m app.krxcheck)만 구현. 이용약관상 제3자 제공 금지·비상업적 이용 — "
+                     "화면·API 제공은 라이선스 확인 전까지 미구현"},
             {"name": "CSV 업로드", "configured": True, "implemented": True, "status": DataStatus.HISTORICAL.value},
         ],
     }
