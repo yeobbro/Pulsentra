@@ -147,7 +147,12 @@ PULSENTRA_RUN_INTEGRATION=1 python -m pytest -m integration -q     # (선택) �
 - **가격**: `price_check.passed`는 모든 표본이 `consistent` 또는 `adjustment_basis_differs`일 때만 참입니다. `record_errors`가 있는 종목은 날짜별 상세 CSV로 원인을 확인합니다.
 - **거래량**: `volume_ratio_median`과 분할 이전 구간의 비율로, 네이버 거래량이 미수정인지 확인합니다.
 - **KIS 필드 해석**: `kis_event_days_*.csv`의 날짜가 감사 후보와 겹치는지 봅니다. 이 결과를 근거로 `flng_cls_code`와 `prtt_rate`의 의미를 문서화합니다(지금은 해석하지 않음).
-- **공시**: `filing_check.passed`는 모든 후보가 `confirmed_kind_match`이고 회사코드 누락이 없을 때만 참입니다. `undetected_event` 건수는 감사가 놓친 이벤트 수입니다.
+- **공시**: `filing_check.passed`는 모든 후보가 `confirmed_kind_match`이고 회사코드 누락이 없을 때만 참입니다(`ambiguous`는 통과가 아님). `undetected_event` 건수는 감사가 놓친 **기업행동** 수입니다(공시 문서 수가 아님).
+- **원 공시와 정정 공시(2026-10-25 변경)**: OpenDART 개발가이드에서 `[기재정정]`·`[첨부정정]`·`[첨부추가]`·`[발행조건확정]`은 "본 보고서명으로 이미 제출된 보고서"를 다시 낸 것이고, `rm`의 `정`은 "본 보고서 제출 후 정정신고가 있음"입니다. 그래서 공시를 먼저 기업행동 단위로 묶습니다(`app/research/crosscheck.py`의 `group_filings`).
+  - 정정 공시는 같은 종목·같은 보고서명(앞의 대괄호 표시 제외)의 이전 원 공시가 365일 안에 **하나뿐일 때만** 그 원 공시에 연결합니다. 여러 개면 `rm`에 `정`이 붙은 것이 하나일 때만 연결하고, 아니면 `ambiguous`로 남깁니다. 원 공시 두 건은 합치지 않습니다.
+  - 원 공시가 없는 정정 공시는 혼자 하나의 기업행동이 됩니다(`link_basis=correction_without_original`).
+  - 후보는 기업행동에 매칭되고(가까운 문서 기준), 매칭되지 않은 기업행동은 한 번만 `undetected_event`로 나옵니다. 여러 후보가 같은 기업행동에 매칭되는 것은 예전처럼 허용합니다. 맞는 종류의 서로 다른 기업행동이 같은 거리에 있으면 `ambiguous`입니다.
+  - **스키마 변경(하위 호환)**: `corporate_action_matches.csv`의 기존 열(`symbol, date, kind, status, filing, filing_kind, filed, days_before_event`)과 의미는 그대로이고, `action_id, action_documents, rcept_nos, action_filings, link_basis` 열과 상태 `ambiguous`가 추가됐습니다. `filings.csv`에는 `rm` 열이 추가됩니다. `crosscheck_status.json`의 `filing_check`에 `corporate_action_documents`(문서 수)·`corporate_actions`(기업행동 수)·`share_base_actions`가 추가됩니다. 이전 실행의 `filings.csv`에는 `rm`이 없으므로 그때는 보고서명 규칙만으로 연결합니다.
 - **알려진 한계**: 상장폐지 종목은 OpenDART `corpCode`에 종목코드가 없을 수 있습니다(`no_corp_code`에 기록).
 
 ## 2b. KRX 공식 시세 대조 (`python -m app.krxcheck`, KIS 없이)

@@ -151,7 +151,8 @@ class DartClient:
                     raise DartAPIError("OpenDART list 항목에 rcept_dt(YYYYMMDD)가 없습니다")
                 rows.append({"rcept_no": d.get("rcept_no"), "corp_code": d.get("corp_code"), "corp_name": d.get("corp_name"),
                              "symbol": (d.get("stock_code") or "").strip() or None, "report_nm": d.get("report_nm"),
-                             "rcept_dt": d.get("rcept_dt"), "risk_flags": classify(d.get("report_nm", "")),
+                             "rcept_dt": d.get("rcept_dt"), "rm": d.get("rm"),   # '정' = corrected later (official guide)
+                             "risk_flags": classify(d.get("report_nm", "")),
                              "corporate_action": classify_corporate_action(d.get("report_nm", ""))})
             if page >= int(body.get("total_page") or 1):
                 break

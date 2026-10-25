@@ -213,3 +213,9 @@ def test_kis_daily_event_fields_are_kept_verbatim():
     assert list(df["kis_split_ratio"]) == ["0.00", "50.00"] and list(df["kis_modified"]) == ["N", "Y"]
     df2, _ = parse_daily_rows([_row("20260105")], "005930")          # older answers without the fields still parse
     assert "kis_split_ratio" not in df2
+
+
+def test_dart_keeps_the_rm_field():
+    s = Session([_page([{**_item("주식분할결정"), "rm": "유정"}, _item("[기재정정]주식분할결정")])])
+    rows = DartClient(api_key="k", session=s, min_interval=0).disclosures("c", "a", "b")
+    assert rows[0]["rm"] == "유정" and rows[1]["rm"] is None

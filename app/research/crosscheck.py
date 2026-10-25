@@ -9,6 +9,8 @@ would mix up:
 """
 from __future__ import annotations
 
+import re
+
 import numpy as np
 import pandas as pd
 
@@ -105,22 +107,108 @@ def verdict(s: dict) -> str:
 
 # ------------------------------------------------------------------------------------------------ filings
 
+# OpenDART report_nm prefixes that, per the official list.json guide, mean "a report already filed under this report
+# name, resubmitted with changes" (기재정정·첨부정정·첨부추가·발행조건확정). They point back to an earlier filing.
+CORRECTION_PREFIXES = ("[기재정정]", "[첨부정정]", "[첨부추가]", "[발행조건확정]")
+CORRECTION_LINK_DAYS = 365       # an original filed longer ago than this is not linked to a correction
+SHARE_BASE_KINDS = {"split", "merge", "bonus_issue", "capital_reduction"}
+
+
+def _base_title(report_nm) -> str:
+    """Report name without the leading bracketed tags: '[기재정정]주식분할결정' -> '주식분할결정'."""
+    return re.sub(r"^(\s*\[[^\]]*\]\s*)+", "", str(report_nm or "")).strip()
+
+
+def _is_correction(report_nm) -> bool:
+    name = str(report_nm or "").lstrip()
+    return any(name.startswith(p) for p in CORRECTION_PREFIXES)
+
+
+def group_filings(filings: pd.DataFrame, link_days: int = CORRECTION_LINK_DAYS) -> pd.DataFrame:
+    """One corporate action per original filing, with its corrections attached.
+
+    A correction (CORRECTION_PREFIXES) is linked to the earlier non-correction filing of the same symbol with the same
+    base report name, filed at most `link_days` before it — only when exactly ONE such original exists. When the
+    optional `rm` column is present, originals marked '정' (OpenDART: "a correction was filed after this report")
+    are preferred. Several possible originals -> the correction forms its own action with action_status 'ambiguous';
+    none -> its own action ('correction_without_original'). Two originals are never merged.
+    Adds: action_id, is_correction, link_basis, action_status ('ok' | 'ambiguous').
+    """
+    f = filings.copy().reset_index(drop=True)
+    f["filed"] = pd.to_datetime(f["rcept_dt"].astype(str), format="%Y%m%d", errors="coerce") if len(f) else pd.Series(dtype="datetime64[ns]")
+    f["is_correction"] = f["report_nm"].map(_is_correction) if len(f) else pd.Series(dtype=bool)
+    f["_base"] = f["report_nm"].map(_base_title) if len(f) else pd.Series(dtype=object)
+    f["action_id"], f["link_basis"], f["action_status"] = None, None, "ok"
+    sort_cols = ["filed"] + (["rcept_no"] if "rcept_no" in f.columns else [])
+    order = f.sort_values(sort_cols, kind="mergesort").index
+    n = 0
+    for i in order:                                   # originals first: each is its own action
+        if not f.at[i, "is_correction"]:
+            n += 1
+            f.at[i, "action_id"], f.at[i, "link_basis"] = f"A{n:04d}", "original"
+    for i in order:
+        if not f.at[i, "is_correction"]:
+            continue
+        r = f.loc[i]
+        cand = f[(~f["is_correction"]) & (f["symbol"] == r["symbol"]) & (f["_base"] == r["_base"])
+                 & (f["filed"] <= r["filed"]) & (f["filed"] >= r["filed"] - pd.Timedelta(link_days, unit="D"))]
+        basis = "official_correction_prefix"
+        if len(cand) > 1 and "rm" in f.columns:
+            marked = cand[cand["rm"].astype(str).str.contains("정", na=False)]
+            if len(marked) == 1:
+                cand, basis = marked, basis + "+rm_정"
+        elif len(cand) == 1 and "rm" in f.columns and "정" in str(cand.iloc[0]["rm"]):
+            basis = basis + "+rm_정"
+        if len(cand) == 1:
+            f.at[i, "action_id"], f.at[i, "link_basis"] = cand.iloc[0]["action_id"], basis
+            continue
+        n += 1
+        f.at[i, "action_id"] = f"A{n:04d}"
+        if len(cand) == 0:
+            f.at[i, "link_basis"] = "correction_without_original"
+        else:
+            f.at[i, "link_basis"], f.at[i, "action_status"] = f"ambiguous: {len(cand)} possible originals", "ambiguous"
+    # an action whose documents disagree on the kind is not trusted either
+    kinds = f.groupby("action_id")["corporate_action"].nunique(dropna=True) if len(f) else pd.Series(dtype=int)
+    for a in kinds[kinds > 1].index:
+        f.loc[f["action_id"] == a, "action_status"] = "ambiguous"
+    return f.drop(columns=["_base"])
+
+
 def match_corporate_actions(candidates: pd.DataFrame, filings: pd.DataFrame, before_days: int = 120, after_days: int = 10) -> pd.DataFrame:
-    """Pair each suspected event with the nearest share-base filing of the same instrument.
+    """Pair each suspected event with the nearest corporate action (an original filing plus its corrections) of the
+    same instrument.
 
     candidates: symbol, date, kind (from the audit). filings: symbol, rcept_dt (YYYYMMDD or date), report_nm,
-    corporate_action. A filing counts when it was made up to `before_days` before the event date (decisions
-    precede the effective date) or up to `after_days` after it (late or corrected filings).
-    Returns one row per candidate with the match status, plus one row per filing that matched no candidate
-    (`undetected_event`) — those are events the price/volume checks missed.
+    corporate_action, and optionally rcept_no and rm. A document counts when it was filed up to `before_days` before
+    the event date (decisions precede the effective date) or up to `after_days` after it (late or corrected filings).
+    Filings are grouped into actions first (`group_filings`), so an original and its correction are ONE action:
+    a candidate matches the action, and an action no candidate matched is reported once as `undetected_event`.
+    Several candidates may still match the same action (e.g. a volume break and a split flagged on adjacent days).
+    Status `ambiguous` = the nearest fitting action could not be told apart from another one (see group_filings).
+    Returns one row per candidate plus one per unmatched share-base action; the columns of earlier versions are kept
+    (filing / filed / days_before_event describe the nearest in-window document) and the action columns are added.
     """
+    cols = ["symbol", "date", "kind", "status", "filing", "filing_kind", "filed", "days_before_event",
+            "action_id", "action_documents", "rcept_nos", "action_filings", "link_basis"]
     cand = candidates.copy()
     cand["date"] = pd.to_datetime(cand["date"])
     f = filings.copy()
     f = f[f["corporate_action"].notna()] if "corporate_action" in f else f.iloc[0:0]
-    f["filed"] = pd.to_datetime(f["rcept_dt"].astype(str), format="%Y%m%d", errors="coerce") if len(f) else pd.Series(dtype="datetime64[ns]")
+    if "rcept_dt" not in f:
+        f["rcept_dt"] = pd.Series(dtype=object)
+    f = group_filings(f) if len(f) else f.assign(filed=pd.Series(dtype="datetime64[ns]"), action_id=None, is_correction=False,
+                                                link_basis=None, action_status="ok")
     expected = {"split": {"split"}, "merge": {"merge", "capital_reduction"}, "volume_level_break": {"split", "merge", "bonus_issue", "capital_reduction"},
                 "bonus_issue_suspected": {"bonus_issue"}}
+
+    def action_info(a: str) -> dict:
+        docs = f[f["action_id"] == a].sort_values("filed", kind="mergesort")
+        nos = docs["rcept_no"].astype(str).tolist() if "rcept_no" in docs else []
+        bases = [b for b in docs["link_basis"] if b != "original"]
+        return {"action_id": a, "action_documents": int(len(docs)), "rcept_nos": "|".join(nos) or None,
+                "action_filings": "|".join(docs["report_nm"].astype(str)), "link_basis": ";".join(dict.fromkeys(bases)) or "original"}
+
     recs, used = [], set()
     for c in cand.itertuples(index=False):
         g = f[(f["symbol"] == c.symbol) & (f["filed"] >= c.date - pd.Timedelta(before_days, unit="D"))
@@ -129,20 +217,28 @@ def match_corporate_actions(candidates: pd.DataFrame, filings: pd.DataFrame, bef
             recs.append({"symbol": c.symbol, "date": c.date, "kind": c.kind, "status": "no_filing_found", "filing": None,
                          "filing_kind": None, "filed": None, "days_before_event": None})
             continue
-        g = g.assign(dist=(c.date - g["filed"]).dt.days.abs()).sort_values("dist")
+        g = g.assign(dist=(c.date - g["filed"]).dt.days.abs()).sort_values(["dist", "filed"], kind="mergesort")
         ok = g[g["corporate_action"].isin(expected.get(c.kind, set()))]
         best = ok.iloc[0] if len(ok) else g.iloc[0]
-        used.add(best.name)
-        recs.append({"symbol": c.symbol, "date": c.date, "kind": c.kind,
-                     "status": "confirmed_kind_match" if len(ok) else "filing_kind_mismatch",
+        a = best["action_id"]
+        used.add(a)
+        status = "confirmed_kind_match" if len(ok) else "filing_kind_mismatch"
+        if (f.loc[f["action_id"] == a, "action_status"] == "ambiguous").any():
+            status = "ambiguous"
+        elif len(ok) and ok["action_id"].nunique() > 1 and ok.iloc[0]["dist"] == ok[ok["action_id"] != a]["dist"].min():
+            status = "ambiguous"                  # two different fitting actions equally close
+        recs.append({"symbol": c.symbol, "date": c.date, "kind": c.kind, "status": status,
                      "filing": best["report_nm"], "filing_kind": best["corporate_action"], "filed": best["filed"],
-                     "days_before_event": int((c.date - best["filed"]).days)})
-    share_base = {"split", "merge", "bonus_issue", "capital_reduction"}
-    for idx, r in f.iterrows():
-        if idx not in used and r["corporate_action"] in share_base:
-            recs.append({"symbol": r["symbol"], "date": None, "kind": None, "status": "undetected_event", "filing": r["report_nm"],
-                         "filing_kind": r["corporate_action"], "filed": r["filed"], "days_before_event": None})
-    return pd.DataFrame(recs, columns=["symbol", "date", "kind", "status", "filing", "filing_kind", "filed", "days_before_event"])
+                     "days_before_event": int((c.date - best["filed"]).days), **action_info(a)})
+    for a, docs in f.groupby("action_id", sort=True):
+        if a in used or not docs["corporate_action"].isin(SHARE_BASE_KINDS).any():
+            continue
+        first = docs.sort_values(["is_correction", "filed"], kind="mergesort").iloc[0]     # the original when there is one
+        recs.append({"symbol": first["symbol"], "date": None, "kind": None,
+                     "status": "ambiguous" if (docs["action_status"] == "ambiguous").any() else "undetected_event",
+                     "filing": first["report_nm"], "filing_kind": first["corporate_action"], "filed": first["filed"],
+                     "days_before_event": None, **action_info(a)})
+    return pd.DataFrame(recs, columns=cols)
 
 
 # ------------------------------------------------------------------------------------------------ listings

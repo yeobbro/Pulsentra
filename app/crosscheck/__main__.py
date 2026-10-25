@@ -17,7 +17,7 @@ import pandas as pd
 
 from app.audit import load_raw_naver
 from app.data.audit import AuditConfig, audit_frame
-from app.research.crosscheck import compare_daily, match_corporate_actions
+from app.research.crosscheck import SHARE_BASE_KINDS, compare_daily, group_filings, match_corporate_actions
 from app.research.manifest import environment_info, git_info, guard_output_dir
 
 
@@ -123,7 +123,13 @@ def run(argv: list[str] | None = None, kis_client=None, dart_client=None) -> int
         m = match_corporate_actions(cand, fdf if len(fdf) else pd.DataFrame(columns=["symbol", "rcept_dt", "report_nm", "corporate_action"]))
         m.to_csv(out / "corporate_action_matches.csv", index=False)
         cm = m[m["kind"].notna()]
+        ca = fdf[fdf["corporate_action"].notna()] if len(fdf) else fdf
+        grouped = group_filings(ca) if len(ca) else ca
         status["filing_check"] = {"ran": True, "candidates": int(len(cand)), "no_corp_code": missing_codes,
+                                  # documents vs actions: an original and its corrections are one action
+                                  "corporate_action_documents": int(len(ca)),
+                                  "corporate_actions": int(grouped["action_id"].nunique()) if len(grouped) else 0,
+                                  "share_base_actions": int(grouped.loc[grouped["corporate_action"].isin(SHARE_BASE_KINDS), "action_id"].nunique()) if len(grouped) else 0,
                                   "statuses": m["status"].value_counts().to_dict() if len(m) else {},
                                   "passed": bool(len(cm)) and not missing_codes and bool((cm["status"] == "confirmed_kind_match").all())}
     status["seconds"] = round(time.time() - t, 1)
