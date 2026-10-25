@@ -8,6 +8,24 @@ Pulsentra는 종목을 추천하는 서비스가 아닙니다. 시장 데이터�
 > 실제 주문 기능은 없습니다. 신호 점수와 모델 확률은 수익을 보장하지 않습니다.
 > v0.3부터 실제 한국 주식 일봉(2016~2026, 상장폐지 종목 포함)으로 검증한 결과가 `reports/v0.3/`에 있습니다. 검증한 전략 중 거래비용 후 일관된 우위를 보인 것은 없었습니다. 자세한 현황은 [`docs/PULSENTRA_STATUS.md`](docs/PULSENTRA_STATUS.md)를 보세요.
 
+## v0.4 (진행 중) — 데이터 감사·재현성·교차 검증
+
+v0.4는 v0.3 결과를 믿을 수 있는지 판단할 도구를 만드는 단계입니다. 새 전략이나 성과는 없습니다. 자세한 내용은 [`docs/RESEARCH_V0_4.md`](docs/RESEARCH_V0_4.md)에 있습니다.
+
+```bash
+pip install -r requirements-lock.txt          # 검증된 버전 한 벌 (Python 3.12+). 3.11은 requirements*.txt
+python -m app.audit --data data/real --out data/audit/run1                       # 종목 단위 데이터 감사 (읽기 전용)
+python -m app.crosscheck --data data/real --audit data/audit/run1 --out data/crosscheck/run1   # KIS·OpenDART 대조 (키 필요)
+python -m app.research --data data/real --format naver_raw --out reports/v0.4 \
+    --audit data/audit/run1 --crosscheck data/crosscheck/run1/crosscheck_status.json
+```
+
+- 감사 기준과 출력: [`docs/DATA_AUDIT.md`](docs/DATA_AUDIT.md) · 교차 검증·API 설정: [`docs/CROSS_VALIDATION.md`](docs/CROSS_VALIDATION.md)
+- **실제 데이터 검증 절차(Mac): [`docs/REAL_DATA_RUNBOOK.md`](docs/REAL_DATA_RUNBOOK.md)**
+- 설치·테스트·재현: [`docs/SETUP.md`](docs/SETUP.md) · 구조·방법론·평가 기준: [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md)
+- 모든 연구 실행은 결과 상태(INELIGIBLE / PROVISIONAL / VERIFIED)와 그 근거를 `run_manifest.json`과 `REPORT.md`에 남깁니다.
+- **미실행:** 이 개발 환경에는 실제 데이터와 API 키가 없어, 실제 데이터 감사와 KIS·OpenDART 대조는 아직 실행하지 않았습니다.
+
 ## v0.3 — 실제 데이터 전략 검증
 
 v0.3은 기능 추가가 아니라 **실제 과거 주가로 기존 전략을 검증**하는 단계입니다.
@@ -59,8 +77,11 @@ uvicorn app.main:app --reload # http://127.0.0.1:8000
 
 ```bash
 pip install -r requirements-dev.txt
-python -m pytest -q
+python -m pytest -q                               # 오프라인(합성·TEST 데이터, 모의 API)
+python -m pytest -q -W error::DeprecationWarning  # CI와 같은 엄격 모드
 ```
+
+실제 API를 부르는 테스트는 `integration` 마커가 붙어 있고, `PULSENTRA_RUN_INTEGRATION=1`과 키가 있을 때만 실행됩니다.
 
 ## 처음 사용하는 순서
 
@@ -78,6 +99,7 @@ python -m pytest -q
 | `KIS_PAPER` | `true`면 모의투자 도메인 사용 (주문 기능은 없음) |
 | `KIS_MIN_INTERVAL_SECONDS` | KIS 호출 간 최소 간격 (기본 0.35초) |
 | `DART_API_KEY` | OpenDART 인증키 |
+| `KIS_TIMEOUT_SECONDS`, `DART_TIMEOUT_SECONDS` | 호출 타임아웃(기본 12초). 재시도는 최대 3회(429·5xx·연결 오류만) |
 | `PULSENTRA_DATA_DIR`, `PULSENTRA_DB_PATH`, `PULSENTRA_MODEL_DIR` | 저장 위치 (`MSL_*` 이름도 계속 인식) |
 | `PULSENTRA_COMMISSION_BPS`, `PULSENTRA_SELL_TAX_BPS`, `PULSENTRA_SLIPPAGE_BPS` | 비용 기본값(가정값). 증권사 수수료와 해당 연도·시장의 세율을 확인해 설정 |
 | `PULSENTRA_STALE_AFTER_BUSINESS_DAYS` | 일봉이 STALE로 바뀌는 영업일 수 (기본 2) |
@@ -100,8 +122,11 @@ app/
   main.py            FastAPI 라우트 (MVP 엔드포인트 유지)
   settings.py        환경 변수
   db.py              SQLite 스키마·마이그레이션
-  data/              데이터 표준, 품질 검사, 적재 기록, 데이터 상태
-  providers/         KIS(시세), OpenDART(공시)
+  data/              데이터 표준, 품질 검사(quality), 종목 단위 감사(audit), 적재 기록, 데이터 상태
+  audit/             감사 CLI (python -m app.audit)
+  crosscheck/        공식 출처 교차 검증 CLI (python -m app.crosscheck)
+  research/          리서치 로더·연구·보고서, manifest(재현 정보), validity(결과 상태), crosscheck(비교 로직)
+  providers/         KIS(시세), OpenDART(공시), http(재시도 상한)
   indicators.py      인과적 지표 (+ INDICATOR_SPECS 계산식)
   scanner.py         스캐너, 긍정·부정 근거
   strategies/        진입 전략 플러그인

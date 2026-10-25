@@ -33,7 +33,7 @@ def _float(name: str, default: float, legacy: str | None = None) -> float:
 APP_NAME = "Pulsentra"
 APP_NAME_KO = "펄센트라"
 APP_TAGLINE = "AI-Powered Market Intelligence & Strategy Validation Platform"
-APP_VERSION = "0.2.0"
+APP_VERSION = "0.4.0.dev0"  # keep in step with pyproject.toml
 
 DATA_DIR = Path(_env("PULSENTRA_DATA_DIR", "MSL_DATA_DIR", str(BASE_DIR / "data")))
 DATA_DIR.mkdir(parents=True, exist_ok=True)
@@ -53,6 +53,11 @@ KIS_MIN_INTERVAL_SECONDS = _float("KIS_MIN_INTERVAL_SECONDS", 0.35)
 
 DART_API_KEY = _env("DART_API_KEY")
 DART_TIMEOUT_SECONDS = _float("DART_TIMEOUT_SECONDS", 12.0)
+
+# KRX Open API (openapi.krx.co.kr). The key travels only in the AUTH_KEY request header.
+KRX_API_KEY = _env("KRX_API_KEY")
+KRX_TIMEOUT_SECONDS = _float("KRX_TIMEOUT_SECONDS", 20.0)
+KRX_MIN_INTERVAL_SECONDS = _float("KRX_MIN_INTERVAL_SECONDS", 0.5)
 
 # Research assumptions, not broker-accurate fee quotes. Kept for the MVP `/api/backtest` endpoint.
 DEFAULT_ROUND_TRIP_COST_BPS = _float("DEFAULT_ROUND_TRIP_COST_BPS", 40.0)

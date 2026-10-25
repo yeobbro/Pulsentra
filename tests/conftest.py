@@ -7,7 +7,7 @@ from pathlib import Path
 _TMP = tempfile.mkdtemp(prefix="pulsentra-test-")
 os.environ["PULSENTRA_DATA_DIR"] = _TMP
 os.environ["PULSENTRA_DB_PATH"] = str(Path(_TMP) / "test.sqlite3")
-for key in ("KIS_APP_KEY", "KIS_APP_SECRET", "DART_API_KEY"):
+for key in ("KIS_APP_KEY", "KIS_APP_SECRET", "DART_API_KEY", "KRX_API_KEY"):   # never the real keys from .env
     os.environ[key] = ""
 os.environ["KIS_MIN_INTERVAL_SECONDS"] = "0"
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))

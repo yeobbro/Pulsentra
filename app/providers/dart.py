@@ -12,16 +12,27 @@ This adapter has only been tested against mocked responses; the first live call 
 from __future__ import annotations
 
 import io
+import re
 import time
 import xml.etree.ElementTree as ET
 import zipfile
-from typing import Any
+from typing import Any, Callable
 
 import requests
 
+from app.providers.http import ProviderError, request_with_retry
 from app.settings import DART_API_KEY, DART_TIMEOUT_SECONDS
 
 BASE = "https://opendart.fss.or.kr/api"
+# list.json status codes handled explicitly (OpenDART developer guide). Anything else other than 000 raises.
+STATUS_OK, STATUS_NO_DATA, STATUS_RATE_LIMIT = "000", "013", "020"
+
+# Report-name keywords that announce a change in the share base (affects adjusted prices and volume).
+# Matched against `report_nm`; the filing date `rcept_dt` is the earliest point the event was public.
+CORPORATE_ACTION_KEYWORDS: list[tuple[str, str]] = [
+    ("주식분할", "split"), ("액면분할", "split"), ("주식병합", "merge"), ("액면병합", "merge"),
+    ("무상증자", "bonus_issue"), ("감자", "capital_reduction"), ("유상증자", "rights_issue"), ("합병", "merger"),
+]
 
 # Report-name keywords -> risk flag. Dilution flags matter for the scanner's negative evidence.
 RISK_KEYWORDS: list[tuple[str, str]] = [
@@ -45,12 +56,37 @@ def classify(report_nm: str) -> str:
     return ",".join(flags)
 
 
+def classify_corporate_action(report_nm: str) -> str | None:
+    """'split' / 'merge' / 'bonus_issue' / 'capital_reduction' / 'rights_issue' / 'merger', or None.
+
+    Corrections ([기재정정]) and cancellations (철회) keep the kind; the caller decides how to treat them.
+    """
+    name = report_nm or ""
+    if "유무상증자" in name:
+        return "bonus_issue"
+    for kw, kind in CORPORATE_ACTION_KEYWORDS:
+        if kw in name:
+            return kind
+    return None
+
+
 class DartClient:
-    def __init__(self, api_key: str | None = None, session: Any = None, min_interval: float = 0.2) -> None:
+    def __init__(self, api_key: str | None = None, session: Any = None, min_interval: float = 0.2, max_retries: int = 3,
+                 backoff: float = 1.0, sleep: Callable[[float], None] = time.sleep) -> None:
         self.api_key = (api_key if api_key is not None else DART_API_KEY).strip()
         self.session = session or requests
         self.min_interval = min_interval
+        self.max_retries, self.backoff, self._sleep = max_retries, backoff, sleep
         self._last = 0.0
+
+    def _call(self, path: str, params: dict) -> Any:
+        self._wait()
+        try:
+            return request_with_retry(self.session, "get", f"{BASE}/{path}", params=params, timeout=DART_TIMEOUT_SECONDS,
+                                      max_retries=self.max_retries, backoff=self.backoff, sleep=self._sleep,
+                                      label=f"OpenDART {path}")
+        except ProviderError as exc:
+            raise DartAPIError(str(exc)) from exc
 
     @property
     def configured(self) -> bool:
@@ -59,7 +95,7 @@ class DartClient:
     def _wait(self) -> None:
         delay = self.min_interval - (time.monotonic() - self._last)
         if delay > 0:
-            time.sleep(delay)
+            self._sleep(delay)
         self._last = time.monotonic()
 
     def _require_key(self) -> None:
@@ -69,8 +105,7 @@ class DartClient:
     def corp_codes(self) -> dict[str, dict]:
         """stock_code (6 digits) -> {corp_code, corp_name}. Unlisted companies are skipped."""
         self._require_key()
-        self._wait()
-        res = self.session.get(f"{BASE}/corpCode.xml", params={"crtfc_key": self.api_key}, timeout=DART_TIMEOUT_SECONDS)
+        res = self._call("corpCode.xml", {"crtfc_key": self.api_key})
         if res.status_code >= 400:
             raise DartAPIError(f"OpenDART corpCode 요청 실패 (HTTP {res.status_code})")
         try:
@@ -91,22 +126,34 @@ class DartClient:
         self._require_key()
         rows: list[dict] = []
         for page in range(1, max_pages + 1):
-            self._wait()
-            res = self.session.get(f"{BASE}/list.json", params={"crtfc_key": self.api_key, "corp_code": corp_code,
-                                                                "bgn_de": bgn_de, "end_de": end_de, "page_no": page, "page_count": 100},
-                                   timeout=DART_TIMEOUT_SECONDS)
+            res = self._call("list.json", {"crtfc_key": self.api_key, "corp_code": corp_code,
+                                           "bgn_de": bgn_de, "end_de": end_de, "page_no": page, "page_count": 100})
             if res.status_code >= 400:
                 raise DartAPIError(f"OpenDART list 요청 실패 (HTTP {res.status_code})")
-            body = res.json()
+            try:
+                body = res.json()
+            except ValueError as exc:
+                raise DartAPIError("OpenDART list 응답이 JSON이 아닙니다") from exc
+            if not isinstance(body, dict):
+                raise DartAPIError("OpenDART list 응답 형식이 예상과 다릅니다")
             status = str(body.get("status", ""))
-            if status == "013":  # documented as "no data"
+            if status == STATUS_NO_DATA:
                 break
-            if status != "000":
+            if status == STATUS_RATE_LIMIT:
+                raise DartAPIError(f"OpenDART 요청 한도 초과 ({status}): 잠시 후 다시 실행하세요")
+            if status != STATUS_OK:
                 raise DartAPIError(f"OpenDART 오류 {status}: {body.get('message', '')}")
-            for d in body.get("list") or []:
+            items = body.get("list") or []
+            if not isinstance(items, list):
+                raise DartAPIError("OpenDART list 필드가 배열이 아닙니다")
+            for d in items:
+                if not isinstance(d, dict) or not re.fullmatch(r"\d{8}", str(d.get("rcept_dt", ""))):
+                    raise DartAPIError("OpenDART list 항목에 rcept_dt(YYYYMMDD)가 없습니다")
                 rows.append({"rcept_no": d.get("rcept_no"), "corp_code": d.get("corp_code"), "corp_name": d.get("corp_name"),
                              "symbol": (d.get("stock_code") or "").strip() or None, "report_nm": d.get("report_nm"),
-                             "rcept_dt": d.get("rcept_dt"), "risk_flags": classify(d.get("report_nm", ""))})
+                             "rcept_dt": d.get("rcept_dt"), "rm": d.get("rm"),   # '정' = corrected later (official guide)
+                             "risk_flags": classify(d.get("report_nm", "")),
+                             "corporate_action": classify_corporate_action(d.get("report_nm", ""))})
             if page >= int(body.get("total_page") or 1):
                 break
         return rows

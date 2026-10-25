@@ -1,5 +1,27 @@
 # Pulsentra 개발 현황
 
+## v0.4 (진행 중, 2026-10-23) — 데이터 감사·재현성·교차 검증
+
+| 항목 | 상태 |
+|---|---|
+| 종목 단위 데이터 감사 | **구현·합성 데이터로 검증** (`python -m app.audit`, `docs/DATA_AUDIT.md`). 실제 데이터로는 미실행: 개발 환경에 `data/real/` 없음 |
+| 재현성 | manifest v2(커밋·패키지·시드·경고·산출물 해시), `requirements-lock.txt`, 같은 입력 두 번 실행 시 결과 해시 동일 확인 |
+| 공식 출처 교차 검증 | **도구 구현, 실행 안 함** — KIS·DART 키 없음 (`docs/CROSS_VALIDATION.md`) |
+| 기준선 | `main` = `v0.3.0` = `a57dcc1` 보존. v0.3 실행 커밋 `4918af9`는 저장소에 없음(설정은 `a57dcc1`과 일치, 코드 동일성은 증명 불가) |
+| 연구 결론 | v0.3 결론 유지. 재실행하지 않음 |
+| 코드 동일성 | 같은 TEST 데이터에서 v0.3.0 코드와 결과 표가 동일함(`scripts/compare_baseline.py`). 실제 데이터로는 미확인 |
+| 실제 데이터 단계 | 절차서 `docs/REAL_DATA_RUNBOOK.md`. 감사·교차 검증·재실행 모두 미실행 |
+| 테스트 | `python -m pytest -q` → 아래 v0.4 테스트 절 (인계 시점 168 passed, 2 skipped) |
+
+### v0.4 테스트
+
+명령: `python -m pytest -q -W error::DeprecationWarning` (2026-10-23, Python 3.13 / numpy 2.5.4 / pandas 2.3.3, 외부 네트워크 없이)
+
+- v0.3의 77개는 그대로 통과합니다. 감사, manifest, 기간 경계, 결과 상태, 어댑터 재시도·스키마, 교차 검증, 저장소 위생 테스트를 추가했습니다.
+- 실제 API 스모크 테스트 2개는 키가 없어 건너뜁니다.
+- DeprecationWarning 173건 → 0건. 남은 경고 1건은 Starlette TestClient가 내는 서드파티 경고입니다.
+- Python 3.11(범위 의존성)과 3.12(잠금 파일)에서도 통과를 확인했습니다.
+
 ## v0.3 (2026-10-23) — 실제 데이터 전략 검증
 
 | 항목 | 상태 |
