@@ -28,7 +28,13 @@ from app.data.audit import bars_fingerprint
 from app.data.schema import is_demo_source
 from app.research.manifest import file_sha256
 
-RULES_VERSION = "eligibility-v1"
+RULES_VERSION = "eligibility-v3"
+# v3 (2026-10-26): unverified price-adjustment rows in the price evidence (price-evidence-v2, or the adjustment rows
+#   of a v1 file) keep source_verification at WATCH at best, even when a full-period flag is set; reports show their
+#   count instead of "no mismatch". FAIL rules of v2 are unchanged.
+# v2 (2026-10-26): source_verification also reads saved cross-source price evidence (app.research.price_evidence):
+#   evidence damaged or made from files that changed since -> FAIL; unresolved material price disagreements on dates
+#   inside the run -> FAIL; evidence only for some dates (or none inside the run) -> WATCH. v1 inputs give v1 results.
 PASS, WATCH, FAIL, INSUFFICIENT = "PASS", "WATCH", "FAIL", "INSUFFICIENT_DATA"
 SEVERITY = {PASS: 0, WATCH: 1, INSUFFICIENT: 2, FAIL: 3}
 LABELS = {PASS: "USABLE", WATCH: "REVIEW_REQUIRED", FAIL: "UNUSABLE", INSUFFICIENT: "INSUFFICIENT_EVIDENCE"}
@@ -55,6 +61,7 @@ class RunDataFacts:
     verifications: dict = field(default_factory=dict)   # e.g. crosscheck_status.json "verified" flags
     audit_applied: bool = False                    # the run dropped `exclude` symbols and masked `exclude_until_verified` bars
     settings_hash: str | None = None
+    price_evidence: dict | None = None             # price_evidence.summary_for_eligibility(...) or None
 
 
 @dataclass
@@ -152,8 +159,36 @@ def assess(facts: RunDataFacts, audit: AuditEvidence | None, policy: Eligibility
                          files_recorded=len(rec.get("manifest_sha256") or {}), gaps={k: len(v) for k, v in gaps.items()}))
     # 3. independent source verification
     ver = {k: bool(facts.verifications.get(k)) for k in INDEPENDENT_CHECKS}
-    if all(ver.values()):
+    pe = facts.price_evidence
+    if all(ver.values()) and not (pe and (not pe.get("ok") or pe.get("unresolved_price_in_run") or pe.get("unverified_adjustments_in_run"))):
         checks.append(_c("source_verification", PASS, "독립 출처 가격 대조가 실행되어 통과", verified=ver))
+    elif pe is not None:
+        vals = dict(verified=ver, evidence=pe.get("path"), evidence_rules=pe.get("rules_version"), dates_in_run=pe.get("dates_in_run"),
+                    dates_outside_run=pe.get("dates_outside_run"), unresolved_price_in_run=pe.get("unresolved_price_in_run"),
+                    comparable_rows_in_run=pe.get("comparable_rows_in_run"), scope=(pe.get("scope") or {}).get("kind"),
+                    evidence_sha256=pe.get("evidence_sha256"), evidence_range=pe.get("evidence_range"), run_range=pe.get("run_range"),
+                    dates_compared_in_run=pe.get("dates_compared_in_run"), dates_passed_in_run=pe.get("dates_passed_in_run"),
+                    dates_with_unverified_adjustments_in_run=pe.get("dates_with_unverified_adjustments_in_run"),
+                    unverified_adjustments_in_run=pe.get("unverified_adjustments_in_run"),
+                    near_one_unverified_adjustments_in_run=pe.get("near_one_unverified_adjustments_in_run"),
+                    not_comparable_in_run=pe.get("not_comparable_in_run"))
+        uv, n1 = pe.get("unverified_adjustments_in_run") or 0, pe.get("near_one_unverified_adjustments_in_run")
+        uv_txt = f"확인되지 않은 조정 가능 {uv}행" + (f"(근접 1배율 {n1}행)" if n1 is not None else "(근접 1배율 집계 없음: v1 증거)")
+        if not pe.get("ok"):
+            checks.append(_c("source_verification", FAIL, "가격 대조 증거가 손상됐거나 만든 뒤 원본이 바뀜: " + "; ".join((pe.get("problems") or [])[:3]), **vals))
+        elif pe.get("unresolved_price_in_run"):
+            checks.append(_c("source_verification", FAIL,
+                             f"실행 기간 안의 대조 날짜 {pe.get('dates_failed_in_run')}에서 독립 출처와 설명되지 않은 가격 불일치 "
+                             f"{pe.get('unresolved_price_in_run')}행", **vals))
+        elif not pe.get("dates_in_run"):
+            checks.append(_c("source_verification", WATCH, "가격 대조 증거의 날짜가 모두 실행 기간 밖 — 이 실행의 데이터는 대조되지 않음", **vals))
+        else:
+            checks.append(_c("source_verification", WATCH,
+                             f"{pe.get('dates_compared_in_run')}개 거래일 대조: 통과 {pe.get('dates_passed_in_run')}일, 미검증 조정 포함 "
+                             f"{pe.get('dates_with_unverified_adjustments_in_run')}일"
+                             + (f", 표본 부족 {len(pe.get('dates_failed_in_run'))}일" if pe.get('dates_failed_in_run') else "")
+                             + f" · 미해결 가격 불일치 0행 · {uv_txt} · 비교 불가 {pe.get('not_comparable_in_run')}행 "
+                             "— 조정은 기업행동 자료로 확인되지 않았고, 대조한 날짜 외 기간은 검증되지 않음", **vals))
     else:
         checks.append(_c("source_verification", INSUFFICIENT if not rec else WATCH,
                          "독립 출처 가격 대조(cross_source_price_check) 결과 없음: 출처의 정확성은 확인되지 않음", verified=ver))

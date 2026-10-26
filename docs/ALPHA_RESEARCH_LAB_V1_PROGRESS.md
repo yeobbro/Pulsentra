@@ -196,6 +196,19 @@ PBO, Deflated Sharpe Ratio, Reality Check/SPA, 국면별 판정은 **구현하�
 5. **P2** — Factor Lab 게이트와 Strategy Library 게이트의 검사 기준 차이(Rank IC t값 vs 거래 기대수익 구간). 같은 척도로 비교하지 않는다는 점만 문서화.
 6. **P3** — PBO·Deflated Sharpe 미구현. 실험 수 기록만 있음.
 
+### 추가 — 가격 교차 검증 증거 🟡 (2026-10-26, `feat/cross-source-price-evidence`, 미커밋)
+
+| 항목 | 상태 | 근거 |
+|---|---|---|
+| 증거 생성기(저장된 KRX 응답만, 날짜·필드별 일치율과 분모, 매핑·한쪽 출처 종목, 불일치 분류, 원본 해시) | ✅ | `app/krxcheck/evidence.py`, `app/research/price_evidence.py` · `tests/test_price_evidence.py` 18개 |
+| 적격성 v2(증거 손상·원본 변경·미해결 불일치 → FAIL, 일부 날짜만 → WATCH) | ✅ | `app/research/eligibility.py` |
+| 가격 증거 v2(날짜 상태 3종, 확인되지 않은 조정 행 별도 집계·근접 1배율 하위 집계, 미검증 행이 있으면 통과 아님)와 적격성 v3(미검증 행 → 최소 WATCH, 실제 수로 설명) | ✅ | `price-evidence-v2` · `eligibility-v3`. v1 산출물 보존 |
+| Factor Lab `--crosscheck`로 증거 연결 | ✅ | `test_factorlab_reads_price_evidence` |
+| 실제 4개 거래일 비교·재현 | ✅ | v2: 2025년 2일 `PASSED_WITH_UNVERIFIED_ADJUSTMENTS`(114·103행), 2026-10-22·23 `FAILED`(711·675행). 기존 비교 결과와 같음 |
+| 2025년 조정 가능 행의 원인(기업행동 공시 대조) | ⬜ | 미확인. 이번 작업 범위 밖 |
+| 2026-10-22·23 불일치 원인 | ⬜ | 미확정. 수집 시각은 장 마감 후 |
+| 연구 기간 전체의 출처 검증 | ⬜ | 4개 거래일·KOSPI만 있음. 추가 KRX 응답 수집은 사용자 승인 필요 |
+
 ## 9. 테스트와 실행 환경
 
 | 명령 (Linux VM, Python 3.10, `$HOME/venv`) | 결과 |
@@ -203,6 +216,8 @@ PBO, Deflated Sharpe Ratio, Reality Check/SPA, 국면별 판정은 **구현하�
 | 기준선(변경 전, `32fe29f`): `python -m pytest -q -p no:cacheprovider` | 272 passed, 2 skipped, 1 warning |
 | 변경 후 전체: 같은 명령 | **339 passed, 2 skipped, 1 warning** (기존 272 그대로 + 신규 67) |
 | 변경 후 전체, CI 엄격 모드 `-W error::DeprecationWarning` | 339 passed, 2 skipped, 1 warning |
+| 가격 증거 v2·적격성 v3 후 전체(엄격 모드, 2026-10-26, `feat/cross-source-price-evidence`) | **423 passed, 2 skipped, 1 warning** (가격 증거 테스트 13 → 18, 조정 행 테스트 1개는 새 상태 계약으로 강화) |
+| 가격 교차 검증 증거 추가 후 전체(엄격 모드, 2026-10-26, `feat/cross-source-price-evidence`) | **418 passed, 2 skipped, 1 warning** (신규 13. 클라우드 Python 3.14.6 + 잠금 의존성에서도 같은 결과) |
 | 데이터 적격성 추가 후 전체(엄격 모드, 2026-10-26, `feat/research-data-eligibility`) | **405 passed, 2 skipped, 1 warning** (신규 16, 기존 단언 변경 없음, 게이트 픽스처 2곳에 적격성 기록 추가) |
 | 날짜 계산 3곳 수정 후 전체(엄격 모드, 2026-10-26) | **389 passed, 2 skipped, 1 warning** |
 | Strategy Library 게이트 연결 후 전체(엄격 모드, 2026-10-26) | **389 passed, 2 skipped, 1 warning** (신규 `tests/test_strategy_gate.py` 19, 기존 기대값 변경 없음, 경고는 기존 Starlette 1건) |

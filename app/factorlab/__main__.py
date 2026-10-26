@@ -23,6 +23,8 @@ import pandas as pd
 from app.research.data import load_naver_raw, load_standard_csv, sample_description
 from app.research.eligibility import assess as assess_eligibility
 from app.research.eligibility import facts_from_bars, load_audit_evidence
+from app.research.price_evidence import load_evidence as load_price_evidence
+from app.research.price_evidence import summary_for_eligibility
 from app.research.factors import FactorLabConfig, default_factors, run_factorlab
 from app.research.ledger import Ledger, LedgerError
 from app.research.manifest import environment_info, git_info, guard_output_dir, output_inventory
@@ -98,13 +100,20 @@ def run(a, argv) -> int:
         if ds.bars.empty:
             raise ValueError("REAL 데이터가 없습니다")
         res = run_factorlab(ds.bars, ds.calendar, cfg, ds.indices.get("KOSPI"))
-        verified = {}
+        verified, price_ev = {}, None
         if a.crosscheck:
-            verified = {k: bool(v) for k, v in (json.loads(Path(a.crosscheck).read_text(encoding="utf-8")).get("verified") or {}).items()}
+            raw_cc = Path(a.crosscheck).read_text(encoding="utf-8")
+            cc = json.loads(raw_cc)
+            if isinstance(cc, dict) and cc.get("evidence_version") is not None:      # price evidence (app.krxcheck.evidence)
+                pe = load_price_evidence(a.crosscheck)
+                d = pd.to_datetime(ds.bars["date"])
+                price_ev = summary_for_eligibility(pe, d.min().strftime("%Y-%m-%d"), d.max().strftime("%Y-%m-%d"))
+                cc = pe["status"] if pe["ok"] else {}
+            verified = {k: bool(v) for k, v in (cc.get("verified") or {}).items()}
         dropped = set(res["audit"]["drop"]) if res["audit"] else set()
         facts = facts_from_bars(ds.bars, data_fingerprint=_fingerprint(ds.bars), requested_start=a.start, requested_end=a.end,
                                 source_record={k: v for k, v in ds.provenance.items()} or None, verifications=verified,
-                                audit_applied=bool(res["audit"]))
+                                audit_applied=bool(res["audit"]), price_evidence=price_ev)
         facts.symbols = [x for x in facts.symbols if x not in dropped]
         eligibility = assess_eligibility(facts, load_audit_evidence(a.audit))
         out.mkdir(parents=True, exist_ok=True)
