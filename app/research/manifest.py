@@ -34,18 +34,37 @@ def package_versions(names: tuple[str, ...] = KEY_PACKAGES) -> dict[str, str | N
     return out
 
 
-def _git(*args: str) -> str | None:
+def _git(*args: str, strip: bool = True) -> str | None:
+    """Run git in ROOT. `strip=False` keeps the output byte-exact (porcelain status codes may start with a space)."""
     try:
-        return subprocess.check_output(["git", *args], cwd=ROOT, stderr=subprocess.DEVNULL).decode().strip()
+        out = subprocess.check_output(["git", *args], cwd=ROOT, stderr=subprocess.DEVNULL).decode()
     except Exception:
         return None
+    return out.strip() if strip else out
+
+
+def _porcelain_paths(out: str | None) -> list[str]:
+    """Paths from `git status --porcelain -z`: records are 'XY <path>' separated by NUL; a rename or copy (X in R/C)
+    is followed by one extra record holding the original path, which is skipped. -z output is never quoted."""
+    records = (out or "").split("\0")
+    paths: list[str] = []
+    i = 0
+    while i < len(records):
+        rec = records[i]
+        i += 1
+        if len(rec) < 4:            # trailing empty record
+            continue
+        status, path = rec[:2], rec[3:]
+        paths.append(path)
+        if status[0] in "RC":
+            i += 1
+    return paths
 
 
 def git_info() -> dict:
     """Full commit, branch and the list of uncommitted code files (names only)."""
     sha = _git("rev-parse", "HEAD")
-    dirty = _git("status", "--porcelain", "--", *CODE_PATHS)
-    changed = [line[3:] for line in dirty.splitlines()] if dirty else []
+    changed = _porcelain_paths(_git("status", "--porcelain", "-z", "--", *CODE_PATHS, strip=False))
     return {"commit": sha, "commit_short": sha[:7] if sha else None, "branch": _git("rev-parse", "--abbrev-ref", "HEAD"),
             "describe": _git("describe", "--tags", "--always", "--dirty"), "uncommitted_code_files": changed,
             "reproducible_from_commit": bool(sha) and not changed}
