@@ -122,11 +122,12 @@ python -m pytest -q -W error::DeprecationWarning  # CI와 같은 엄격 모드
 
 | 환경 | 결과 |
 |---|---|
-| **병합 후 `03c4463`**, Linux VM Python 3.10.12 (2026-10-26) | **423 passed, 2 skipped, 1 warning** |
+| **PR #8 병합 후 `654f277`**, Linux VM Python 3.10.12 (2026-10-26) | **427 passed, 2 skipped, 1 warning** |
+| PR #7 병합 후 `03c4463`, Linux VM Python 3.10.12 (2026-10-26) | 423 passed, 2 skipped, 1 warning |
 | (당시 `feat/alpha-research-lab-v1`) Linux VM, Python 3.10.12, numpy 2.2.6 · pandas 2.3.3 | **389 passed, 2 skipped, 1 warning** (기존 272 + 원장·Factor Lab·Gate 67 + Strategy Library 31 + Strategy Library 게이트 19) |
 | 클라우드 Linux, Python 3.14.6 + `requirements-lock.txt`(numpy 2.5.4, Mac `.venv`와 같은 버전) | 날짜 계산 3곳 수정 전 34 failed · 수정 후 **389 passed, 2 skipped, 1 warning**(임시 git 저장소에서 실행, `.git` 없이 실행하면 저장소 규칙 테스트 23개가 추가로 skip) |
 | (당시 `feat/research-data-eligibility` 작업 트리) Linux VM Python 3.10.12 | **405 passed, 2 skipped, 1 warning** (위 389 + 데이터 적격성 16) |
-| Mac 본체(`.venv`, Python 3.14.6) | 389 passed, 2 skipped, 1 warning(사용자 보고, `e4912a3` 기준) · `03c4463`은 **미검증** |
+| Mac 본체(`.venv`, Python 3.14.6) | PR #8 기준 427 passed, 2 skipped(사용자 보고) · 이전 389 passed, 2 skipped, 1 warning(사용자 보고, `e4912a3` 기준) |
 | CI(GitHub Actions) | **미확인** — 병합됐지만 이 환경에서 Actions 결과를 조회하지 않음 |
 
 numpy 2.5에서 `pd.Timedelta(days=N)`이 DeprecationWarning을 내 엄격 모드에서 실패하던 것을 `pd.Timedelta(N, unit="D")`로 고쳤습니다.

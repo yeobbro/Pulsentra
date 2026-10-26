@@ -1,7 +1,7 @@
 # Pulsentra Alpha Research Lab v1 — 진행 보고서
 
-- 작성: 2026-10-25 · 갱신: 2026-10-26 (기준 브랜치 `research/v0.4-data-audit`, 커밋 `03c4463`)
-- 이 문서의 변경은 모두 `research/v0.4-data-audit`에 **병합됐습니다**. `main`(`a57dcc1`)에는 병합되지 않았습니다. 아래 "코드" 경로는 `03c4463` 기준입니다.
+- 작성: 2026-10-25 · 갱신: 2026-10-26 (기준 브랜치 `research/v0.4-data-audit`, 커밋 `654f277`)
+- 이 문서의 변경은 모두 `research/v0.4-data-audit`에 **병합됐습니다**. `main`(`a57dcc1`)에는 병합되지 않았습니다. 아래 "코드" 경로는 `654f277` 기준입니다.
 - 병합은 코드와 자동 테스트가 들어갔다는 뜻입니다. 실제 데이터 검증이 끝났다는 뜻이 아닙니다(실행 범위는 항목마다 따로 적음).
 
 | PR | 내용 | 작업 브랜치 커밋 | 병합 커밋 |
@@ -10,6 +10,7 @@
 | #5 | Ledger · Factor Lab · Robustness Gate · Strategy Library(게이트 어댑터 포함) | `bc10333` | `e4912a3` |
 | #6 | 연구 데이터 적격성(`eligibility-v1`) | `70ba57b` | `f927820` |
 | #7 | 가격 교차 검증 증거(`price-evidence-v2`)·적격성 `eligibility-v3` | `0013920` | `03c4463` |
+| #8 | manifest의 미커밋 파일 경로 파싱 수정 | `157cebb` | `654f277` |
 
 - 아래 절에 남은 작업 브랜치 이름과 그 시점의 테스트 수는 **당시 기록**입니다. 현재 기준 결과는 9절 첫 행에 있습니다.
 - `price-evidence-v1`과 `eligibility-v2`는 PR #7 작업 중 단계로, 별도로 커밋되지 않았습니다. 병합된 코드에는 `price-evidence-v2`와 `eligibility-v3`만 있습니다.
@@ -82,7 +83,12 @@
 - 테스트·스모크 실행은 Mac 사용자 폴더를 마운트한 Linux VM(Python 3.10, pandas 2.3.3, numpy 2.2.6)에서 했습니다. 잠금 파일은 numpy 2.5.4, CI는 Python 3.12·3.13입니다.
 - 2026-10-25 스모크 실행은 커밋 전 코드로 했으므로 그 manifest는 `reproducible_from_commit: false`입니다. 병합 후 같은 스모크를 다시 실행하지 않았습니다.
 - 가격 증거 v2 산출물(`price_evidence_20261026T062502Z`)도 병합 전 작업 트리 코드로 만들어 `reproducible_from_commit: false`입니다. 병합 코드(`03c4463`)로 VM 임시 폴더에 다시 생성해 보니 `crosscheck_status.json`(생성 시각·도구 정보 제외), 날짜별 `comparison_detail.csv` 4개, 원본 파일 해시 목록이 일치했습니다(2026-10-26). 원본 산출물은 수정하지 않았고 재생성 결과도 저장소에 추가하지 않았습니다.
-- manifest의 `uncommitted_code_files` 첫 항목 첫 글자가 잘리는 문제가 있습니다(예: `pp/factorlab/__main__.py`). `app/research/manifest.py`의 `_git`이 `git status --porcelain` 출력 앞 공백을 지운 뒤 `line[3:]`로 자르기 때문입니다. 코드는 아직 고치지 않았습니다.
+- manifest의 `uncommitted_code_files` 첫 항목 첫 글자가 잘리던 문제(예: `pp/factorlab/__main__.py`)는 **PR #8로 수정되어 `research/v0.4-data-audit`에 병합됐습니다**(작업 커밋 `157cebb`, 병합 `654f277`).
+  - 원인: `app/research/manifest.py`의 `_git`이 `git status --porcelain` 출력 전체의 앞 공백을 지운 뒤 각 줄을 `line[3:]`로 잘랐습니다. 작업 트리에서만 수정된 파일은 상태 코드가 공백으로 시작하므로(` M app/...`), 첫 줄만 한 글자가 더 잘렸습니다.
+  - 수정: 상태 조회는 `git status --porcelain -z` 출력을 공백 제거 없이 받아 `_porcelain_paths`에서 상태 코드(앞 2글자)와 경로를 나눕니다. 공백이 있는 경로는 따옴표 없이, rename/copy는 새 경로만 기록합니다(수정 전에는 따옴표가 붙거나 `old -> new` 문자열 그대로 기록됨).
+  - 회귀 테스트: `tests/test_manifest_git.py` 4개. 임시 폴더에 실제 Git 저장소를 만들어 확인합니다(수정 전 3개 실패, 수정 후 4개 통과).
+  - manifest 필드와 `reproducible_from_commit` 판정은 바뀌지 않았습니다. 바뀐 것은 목록의 경로 문자열뿐입니다.
+  - **한계:** 수정 전에 만든 산출물 manifest는 소급 수정하지 않았습니다. 예를 들어 `price_evidence_20261026T062502Z`에는 `pp/factorlab/__main__.py`가 그대로 남아 있습니다.
 - VM에는 GitHub 인증정보가 없어 원격 상태는 마지막 fetch(2026-10-26 08:06 UTC) 기준입니다.
 
 ## 8. 이번 작업에서 구현한 것
@@ -227,7 +233,8 @@ PBO, Deflated Sharpe Ratio, Reality Check/SPA, 국면별 판정은 **구현하�
 
 | 명령 (Linux VM, Python 3.10, `$HOME/venv`) | 결과 |
 |---|---|
-| **현재 기준 — 병합 후 `03c4463`(작업 트리 변경 없음), 엄격 모드 `-W error::DeprecationWarning`, 2026-10-26** | **423 passed, 2 skipped, 1 warning** |
+| **현재 기준 — PR #8 병합 후 `654f277` 코드(문서 브랜치 `docs/reconcile-research-status`), 엄격 모드 `-W error::DeprecationWarning`, 2026-10-26** | **427 passed, 2 skipped, 1 warning** (`tests/test_manifest_git.py` 4개 포함) |
+| PR #7 병합 후 `03c4463`(작업 트리 변경 없음), 엄격 모드, 2026-10-26 | 423 passed, 2 skipped, 1 warning |
 | 기준선(변경 전, `32fe29f`): `python -m pytest -q -p no:cacheprovider` | 272 passed, 2 skipped, 1 warning |
 | 변경 후 전체: 같은 명령 | **339 passed, 2 skipped, 1 warning** (기존 272 그대로 + 신규 67) |
 | 변경 후 전체, CI 엄격 모드 `-W error::DeprecationWarning` | 339 passed, 2 skipped, 1 warning |
@@ -244,10 +251,10 @@ PBO, Deflated Sharpe Ratio, Reality Check/SPA, 국면별 판정은 **구현하�
 
 | 다른 환경 (2026-10-26) | 결과 |
 |---|---|
-| 병합 후 `03c4463`에서 다시 실행한 환경 | Linux VM(Python 3.10.12)만. 클라우드 Python 3.14.6·Mac·CI에서는 병합 후 실행하지 않음 |
+| 병합 후 다시 실행한 환경 | `03c4463`: Linux VM(Python 3.10.12)만. PR #8: Linux VM과 Mac(아래 사용자 보고). 클라우드 Python 3.14.6·CI에서는 병합 후 실행하지 않음 |
 | 클라우드 Linux, Python 3.14.6 + `requirements-lock.txt`(numpy 2.5.4 · pandas 2.3.3 · fastapi 0.161.1 · starlette 1.9.0, Mac `.venv`와 같은 버전), 엄격 모드 | 수정 전 **34 failed**, 332 passed, 25 skipped — 원인: numpy 2.5에서 `pd.Timedelta(days=N)`과 해상도가 다른 datetime 열의 concat이 DeprecationWarning |
 | 같은 환경, 날짜 계산 3곳 수정 후(`app/strategy_library.py` 1줄, `tests/test_robustness.py` 1줄, `tests/test_factorlab.py` 2줄, 기대값 변경 없음) | **389 passed, 2 skipped, 1 warning**(같은 파일로 만든 임시 git 저장소). `.git` 없는 사본에서는 366 passed, 25 skipped(저장소 규칙 테스트 23개가 "not a git checkout"으로 skip) |
-| Mac 본체(`.venv`, Python 3.14.6) | ❔ 미검증 — 작업 환경에서 Mac 터미널에 명령을 입력할 수 없음 |
+| Mac 본체(`.venv`, Python 3.14.6) | PR #8: 회귀 테스트 4 passed, 전체 427 passed, 2 skipped (사용자 보고. 이 작업 환경에서는 Mac 터미널에 명령을 입력할 수 없어 직접 확인하지 않음) |
 | CI(GitHub Actions, Python 3.12·3.13 잠금 의존성) | ❔ 미확인 — 커밋·병합은 됐고 워크플로(`.github/workflows/tests.yml`)는 push·pull_request마다 실행되지만, 이 환경에서 Actions 결과를 조회하지 않음 |
 
 ## 10. 실제 데이터 스모크 실행 (범위 제한, 결과 해석 금지)
@@ -283,7 +290,7 @@ PBO, Deflated Sharpe Ratio, Reality Check/SPA, 국면별 판정은 **구현하�
 
 ## 12. 다음 단계와 차단 요인
 
-1. 커밋·병합은 끝났습니다(PR #4~#7, `research/v0.4-data-audit`). 남은 것: CI 결과 확인, Mac에서 병합 커밋 테스트 재실행, `main` 병합 여부 결정(사용자 결정).
+1. 커밋·병합은 끝났습니다(PR #4~#8, `research/v0.4-data-audit`). 남은 것: CI 결과 확인, `main` 병합 여부 결정(사용자 결정). Mac 테스트는 PR #8 기준으로 사용자가 보고했습니다.
 2. 실제 실험을 원장에 사전 등록한 뒤(`python -m app.ledger template`), 전체 기간 Factor Lab 실행(사용자 승인 필요, 약 2~4분 예상 ❔).
 3. 감사 review 2,225종목 검토와 기업행동 후보 대조 — 끝나기 전에는 실제 데이터 판정이 PASS가 될 수 없음(PROVISIONAL).
 4. PBO(CSCV)·Deflated Sharpe 구현, 다중 실험 보정.
