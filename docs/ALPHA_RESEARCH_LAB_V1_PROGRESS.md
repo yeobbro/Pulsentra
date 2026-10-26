@@ -173,6 +173,29 @@ PBO, Deflated Sharpe Ratio, Reality Check/SPA, 국면별 판정은 **구현하�
 화면 확인: 클라우드 작업공간의 앱 사본(같은 파일)을 DEMO로 띄워 실행 → 게이트 평가, 저장 실행 표에서 평가, 서버 오류(500) 표시를 확인. 콘솔 오류 0건.
 작업 중 사용자 컴퓨터 연결이 한 번 끊겨, 변경은 클라우드 사본에서 마무리한 뒤 해시로 원본이 바뀌지 않았음을 확인하고 반영했습니다.
 
+### 추가 — 연구 데이터 적격성·감사 출처 🟡 (2026-10-26, `feat/research-data-eligibility`, 미커밋)
+
+자세한 규칙: [`DATA_ELIGIBILITY.md`](DATA_ELIGIBILITY.md).
+
+| 항목 | 상태 | 근거 |
+|---|---|---|
+| 적격성 모델·판정(`eligibility-v1`, 상태 4종, 감사 산출물 해시 확인, 지문 대조, 범위·신선도, ok/review/exclude, 출처 기록·독립 대조 분리) | ✅ | `app/research/eligibility.py` · `tests/test_data_eligibility.py` 16개 |
+| Factor Lab 실행 기록(`data_eligibility`), `--crosscheck` 입력, REPORT 표시 | ✅ | `app/factorlab/__main__.py` · `test_factorlab_run_records_eligibility` |
+| Strategy Library 실행 기록 | ✅ | `app/strategy_library.py` · `test_strategy_library_run_records_eligibility` |
+| 원장 manifest facts에 적격성 요약 | ✅ | `app/research/ledger.py` · `test_ledger_and_manifest_preserved` |
+| 두 게이트 공통 검사 | ✅ | `robustness.py`, `robustness_strategy.py` · `test_both_gates_read_the_record_the_same_way` |
+| 실제 데이터 판정(백테스트 없이 판정만) | ✅ | 지문 일치 `1ea20b72f9562ede`. 감사 미적용 시 UNUSABLE, 감사 적용 조건이면 REVIEW_REQUIRED |
+| `app.research` 전략 연구 파이프라인 연결 | ⬜ | 후속 과제 |
+| 앱 DB 데이터의 수집 기록·감사 연결 | ⬜ | 그래서 Strategy Library 실행은 실제 데이터여도 INSUFFICIENT |
+
+후속 과제와 우선순위(데이터 적격성에 직접 영향을 주는 순):
+1. **P1** — review 종목 2,225개 검토와 기업행동 후보 8,073건 공시 대조. 끝나기 전에는 실제 데이터가 REVIEW_REQUIRED를 벗어날 수 없음.
+2. **P1** — 독립 출처 가격 대조(KIS·KRX) 결과를 `crosscheck_status.json`의 `cross_source_price_check`로 남기는 실행. 지금은 대조가 없어 source_verification이 WATCH.
+3. **P2** — 배당·총수익, 거래량 수정, 연도별 세율. 적격성에서는 known_limitations로만 표시.
+4. **P2** — Strategy Library 게이트의 "시도한 설정 수"와 "주변 파라미터"가 최근 실행 200개만 봄(`strategy_library.py` `evidence_for_run`). 실행이 많아지면 선택 편향 경고가 약해짐.
+5. **P2** — Factor Lab 게이트와 Strategy Library 게이트의 검사 기준 차이(Rank IC t값 vs 거래 기대수익 구간). 같은 척도로 비교하지 않는다는 점만 문서화.
+6. **P3** — PBO·Deflated Sharpe 미구현. 실험 수 기록만 있음.
+
 ## 9. 테스트와 실행 환경
 
 | 명령 (Linux VM, Python 3.10, `$HOME/venv`) | 결과 |
@@ -180,6 +203,7 @@ PBO, Deflated Sharpe Ratio, Reality Check/SPA, 국면별 판정은 **구현하�
 | 기준선(변경 전, `32fe29f`): `python -m pytest -q -p no:cacheprovider` | 272 passed, 2 skipped, 1 warning |
 | 변경 후 전체: 같은 명령 | **339 passed, 2 skipped, 1 warning** (기존 272 그대로 + 신규 67) |
 | 변경 후 전체, CI 엄격 모드 `-W error::DeprecationWarning` | 339 passed, 2 skipped, 1 warning |
+| 데이터 적격성 추가 후 전체(엄격 모드, 2026-10-26, `feat/research-data-eligibility`) | **405 passed, 2 skipped, 1 warning** (신규 16, 기존 단언 변경 없음, 게이트 픽스처 2곳에 적격성 기록 추가) |
 | 날짜 계산 3곳 수정 후 전체(엄격 모드, 2026-10-26) | **389 passed, 2 skipped, 1 warning** |
 | Strategy Library 게이트 연결 후 전체(엄격 모드, 2026-10-26) | **389 passed, 2 skipped, 1 warning** (신규 `tests/test_strategy_gate.py` 19, 기존 기대값 변경 없음, 경고는 기존 Starlette 1건) |
 | Strategy Library 추가 후 전체(엄격 모드) | **370 passed, 2 skipped, 1 warning** (신규 `tests/test_strategy_library.py` 30 + 저장소 규칙 1, 기존 기대값 변경 없음) |

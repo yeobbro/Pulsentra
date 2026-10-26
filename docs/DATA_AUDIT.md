@@ -115,3 +115,4 @@ CLI에서 `--jump-threshold`, `--volume-break-factor`, `--no-gap-volume-shift`�
 - **합성 데이터로 검증함**(`tests/test_audit.py`, 20개 함수): 위 표의 모든 검사, 전후 값 기록, 제외 구간, 기업행동 후보, 로더와의 행 일치, 재실행 지문 일치, 출력 폴더 보호
 - **실제 데이터로 실행함(2026-10-24, 2회)**: `data/audit/full_20261024T060804Z_a`, `_b`. v0.3 보고서의 수치(`non_positive_price` 1,461행·1종목, `ohlc_inconsistent` 179행·23종목, `volume_level_break` 1,991건·559종목, `price_jump` 2,454행, 반올림 보정 24,379행)가 그대로 재현됐고, 두 실행의 지문이 같습니다. 종목 상태: ok 597 / review 2,225 / exclude 2.
 - **아직 하지 않은 것**: 이상의 원인 확인(예: `non_positive_price`가 몰린 084440), `review` 종목 검토, 감사 결과를 반영한 연구 재실행(`--audit`).
+- **감사와 연구 적격성은 별개입니다.** 감사 결과를 연구 실행에 어떻게 적용·판정하는지는 [`DATA_ELIGIBILITY.md`](DATA_ELIGIBILITY.md)에 있습니다. 2026-10-26 판정만 실행해 본 결과, 실제 데이터 행 지문은 감사 `_a`의 사용 가능 행 지문 `1ea20b72f9562ede`와 일치했습니다.

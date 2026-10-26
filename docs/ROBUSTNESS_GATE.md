@@ -106,3 +106,12 @@ PBO(CSCV), Deflated Sharpe Ratio, White Reality Check / Hansen SPA, 시장 국�
   이것은 판정을 일부러 막은 것이 아니라 근거가 없다는 표시이며, 근거가 모두 있는 입력에서는 PASS가 나오는지 테스트합니다(`test_pass_is_reachable_only_with_full_evidence`).
   미구현: PBO, Deflated Sharpe, Reality Check/SPA, 파라미터 재최적화 워크포워드(`/api/backtests/walk-forward`는 게이트와 연결되지 않음), 국면별 판정,
   비용·배당을 반영한 벤치마크. 벤치마크는 비용을 내지 않으므로 초과수익은 전략에 불리하게 계산됩니다.
+
+## 공통 검사: data_eligibility (2026-10-26 추가, `eligibility-v1`)
+
+- 두 게이트 모두 `app/research/eligibility.py`의 `gate_check`로 같은 방식으로 판정합니다.
+- 실행 시점에 기록된 적격성 상태를 그대로 씁니다: PASS→PASS, WATCH→WATCH, FAIL→FAIL, INSUFFICIENT_DATA→INSUFFICIENT_DATA.
+- 기록이 없는 이전 실행은 INSUFFICIENT_DATA입니다. 소급해서 검증 완료로 보지 않습니다.
+- 기록의 데이터 지문이 실행 지문(Factor Lab manifest `data_fingerprint`, Strategy Library 실행의 데이터 지문)과 다르면 FAIL입니다.
+- **테스트 픽스처 변경:** 이 검사가 생기면서 `tests/test_robustness.py`의 `make_run`과 `tests/test_strategy_gate.py`의 `good_library`에 PASS 적격성 기록을 넣었습니다. 단언(assert)은 바꾸지 않았고, 기록이 없는 경우는 `tests/test_data_eligibility.py`가 따로 확인합니다.
+- 판정 규칙: [`DATA_ELIGIBILITY.md`](DATA_ELIGIBILITY.md).

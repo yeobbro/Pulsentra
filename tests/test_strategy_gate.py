@@ -30,7 +30,8 @@ def good_library(**over):
            "yearly": [{"year": y, "excess_net": 0.02} for y in range(2016, 2024)],
            "cost_stress": {m: {"by_period": [_period("validation", excess=0.01)]} for m in ("2.0", "3.0")},
            "benchmark": {"kind": "index", "symbol": "KOSPI", "label": "시장지수 매수 후 보유"},
-           "validity_status": "VERIFIED", "audit": {"applied": True, "review_share": 0.1}}
+           "validity_status": "VERIFIED", "audit": {"applied": True, "review_share": 0.1},
+           "data_eligibility": {"rules_version": "eligibility-v1", "status": "PASS", "checks": [], "provenance": {"data_fingerprint": "f" * 16}}}
     lib.update(over)
     return lib
 
