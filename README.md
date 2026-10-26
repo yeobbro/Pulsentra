@@ -38,7 +38,8 @@ python -m app.ledger verify --files                          # 원장·연결 �
 
 - Factor Lab: 모멘텀(20/60/120)·반전·변동성·거래대금·거래대금 비율·비유동성, IC·Rank IC·분위 수익률·회전율·비용 후 동일가중 대비 초과수익. 요인 ≤ t, 진입 t+1 시가, 청산 t+1+h 시가.
 - Robustness Gate: PASS / WATCH / FAIL / INSUFFICIENT_DATA, 기준은 [`docs/ROBUSTNESS_GATE.md`](docs/ROBUSTNESS_GATE.md). PBO·Deflated Sharpe는 미구현.
-  Strategy Library 저장 실행도 별도 어댑터로 평가합니다(`POST /api/library/runs/{id}/robustness`). 현재 앱 DB 실행은 감사·결과 상태가 연결되지 않아 PASS가 나올 수 없고, DEMO 실행은 FAIL입니다.
+  Strategy Library 저장 실행도 별도 어댑터로 평가합니다(`POST /api/library/runs/{id}/robustness`).
+- **연구 데이터 적격성**(`eligibility-v1`, 브랜치 `feat/research-data-eligibility`, 미커밋): Factor Lab·Strategy Library 실행마다 데이터 출처·감사 지문 일치·제외/검토 종목·감사 범위와 신선도를 판정해 USABLE / REVIEW_REQUIRED / UNUSABLE / INSUFFICIENT_EVIDENCE로 기록하고, 두 게이트가 같은 방식으로 읽습니다. 현재 실제 데이터는 감사 적용 시 REVIEW_REQUIRED, 미적용 시 UNUSABLE입니다. [`docs/DATA_ELIGIBILITY.md`](docs/DATA_ELIGIBILITY.md) 현재 앱 DB 실행은 감사·결과 상태가 연결되지 않아 PASS가 나올 수 없고, DEMO 실행은 FAIL입니다.
 - 실제 데이터는 범위를 제한한 스모크 실행 1회뿐이며(2023년 이후, 판정 INSUFFICIENT_DATA) 연구 결론이 아닙니다.
 - **Strategy Library**(대시보드 "Strategy Library" 탭, `/api/library/*`): 대표 전략 템플릿 18개(AVAILABLE 13 · LIMITED 2 · PLANNED 3)의 원리·규칙·파라미터 범위를 보고, Strategy Lab과 같은 엔진으로 백테스트·같은 조건 비교·Experiment Ledger 사전 등록을 합니다. 인기·성과 순위가 아닙니다. [`docs/STRATEGY_LIBRARY.md`](docs/STRATEGY_LIBRARY.md)
 
@@ -123,7 +124,8 @@ python -m pytest -q -W error::DeprecationWarning  # CI와 같은 엄격 모드
 |---|---|
 | Linux VM, Python 3.10.12, numpy 2.2.6 · pandas 2.3.3 | **389 passed, 2 skipped, 1 warning** (기존 272 + 원장·Factor Lab·Gate 67 + Strategy Library 31 + Strategy Library 게이트 19) |
 | 클라우드 Linux, Python 3.14.6 + `requirements-lock.txt`(numpy 2.5.4, Mac `.venv`와 같은 버전) | 날짜 계산 3곳 수정 전 34 failed · 수정 후 **389 passed, 2 skipped, 1 warning**(임시 git 저장소에서 실행, `.git` 없이 실행하면 저장소 규칙 테스트 23개가 추가로 skip) |
-| Mac 본체(`.venv`, Python 3.14.6) | **미검증** |
+| `feat/research-data-eligibility` 작업 트리(미커밋, 2026-10-26), Linux VM Python 3.10.12 | **405 passed, 2 skipped, 1 warning** (위 389 + 데이터 적격성 16) |
+| Mac 본체(`.venv`, Python 3.14.6) | 389 passed, 2 skipped, 1 warning(사용자 보고, `e4912a3` 기준) · 이 브랜치는 **미검증** |
 | CI(GitHub Actions) | **미검증**(커밋 전) |
 
 numpy 2.5에서 `pd.Timedelta(days=N)`이 DeprecationWarning을 내 엄격 모드에서 실패하던 것을 `pd.Timedelta(N, unit="D")`로 고쳤습니다.

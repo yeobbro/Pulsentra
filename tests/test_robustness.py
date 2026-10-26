@@ -29,7 +29,7 @@ def _rows(factor, period, start, end, ric, edge, turnover=0.3, n=200):
 
 def make_run(tmp_path, name="fl", ric=(0.05, 0.05, 0.05), edge=(0.01, 0.01, 0.01), turnover=0.3, neighbours=0.05,
              periods=None, factors=None, ends=("2021-11-15", "2023-11-15", "2025-11-15"), validity="VERIFIED",
-             reproducible=True, audit=None, started=None, ledger=None, total=3, embargo=35):
+             reproducible=True, audit=None, started=None, ledger=None, total=3, embargo=35, eligibility="PASS"):
     d = tmp_path / name
     d.mkdir()
     rows = []
@@ -43,7 +43,10 @@ def make_run(tmp_path, name="fl", ric=(0.05, 0.05, 0.05), edge=(0.01, 0.01, 0.01
          "config": {"factors": factors or FACTORS, "periods": periods or PERIODS, "horizon": 20, "embargo_days": embargo},
          "cost_assumptions": {"buy_side_bps": 11.5, "sell_side_bps": 31.5}, "data_fingerprint": "feedfacefeedface",
          "validity": {"status": validity}, "audit": {"review_share": 0.1, "symbols_dropped": 2} if audit is None else (audit or None),
-         "experiments_total": total, "ledger_experiment": ledger}
+         "experiments_total": total, "ledger_experiment": ledger,
+         # eligibility-v1 record as Factor Lab writes it at run time (None = a run made before the record existed)
+         "data_eligibility": None if eligibility is None else {"rules_version": "eligibility-v1", "status": eligibility, "checks": [],
+                                                               "provenance": {"data_fingerprint": "feedfacefeedface"}}}
     m["outputs"] = output_inventory(d)
     (d / "run_manifest.json").write_text(json.dumps(m), encoding="utf-8")
     return d

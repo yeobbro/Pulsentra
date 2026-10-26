@@ -25,6 +25,8 @@ from app.backtesting.engine import ExitConfig
 from app.backtesting.engine import run_portfolio
 from app.backtesting.metrics import equity_metrics, trade_metrics
 from app.backtesting.report import data_info, prepare, run_report
+from app.research.eligibility import assess as assess_eligibility
+from app.research.eligibility import facts_from_bars
 from app.research.ledger import Ledger, canonical, file_sha256
 from app.research.robustness_strategy import StrategyGateConfig, StrategyRunEvidence, evaluate_strategy
 from app.research.manifest import environment_info, git_info, output_inventory
@@ -242,6 +244,9 @@ def run_entry(entry_id: str, params: dict | None, exit_cfg: ExitConfig | None, r
                           "yearly": yearly_vs_benchmark(rep["_equity_full"], bcurve, risk.initial_cash), "cost_stress": stress,
                           "data_sources": rep["data"].get("sources"), "synthetic": bool(rep["data"].get("synthetic")),
                           "mixed_demo_and_real": bool(rep["data"].get("mixed_demo_and_real")), "evidence_version": EVIDENCE_VERSION,
+                          # app-DB rows have no source record and no audit linkage yet: the record says so (INSUFFICIENT / FAIL)
+                          "data_eligibility": assess_eligibility(facts_from_bars(frame, data_fingerprint=data_fp, requested_start=start,
+                                                                                 requested_end=end, settings_hash=sh), None),
                           "turnover": row["turnover"], "coverage": row["coverage"], "ledger": led_info,
                           "uses_strategy_exit_rule": bool(exit_cfg.strategy_exit and entry.as_dict()["has_strategy_exit_rule"])}
         for k in ("_equity_full", "_gross_equity_full", "_trades_full", "_gross_trades_full", "_benchmark_full"):

@@ -18,6 +18,7 @@ from dataclasses import asdict, dataclass, field, fields
 import numpy as np
 import pandas as pd
 
+from app.research.eligibility import gate_check as eligibility_check
 from app.research.robustness import FAIL, INSUFFICIENT, PASS, SEVERITY, WATCH, _check
 
 NOT_IMPLEMENTED_STRATEGY = [
@@ -141,6 +142,7 @@ def evaluate_strategy(ev: StrategyRunEvidence, gate: StrategyGateConfig | None =
         rs = au.get("review_share")
         checks.append(_check("audit_applied", WATCH if rs is None or rs > 0.5 else PASS,
                              f"감사 적용, review 비율 {rs}" if rs is not None else "감사 적용, review 비율 미기록", **au))
+    checks.append(eligibility_check(lib.get("data_eligibility"), ev.data_fingerprint if lib.get("data_eligibility") else None))
     # 4. fingerprint and settings integrity
     fp = ev.data_fingerprint
     if not fp:

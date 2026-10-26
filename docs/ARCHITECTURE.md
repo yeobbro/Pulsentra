@@ -47,6 +47,7 @@ Alpha Research Lab v1 구성 요소(Phase 1~3 MVP)의 시점 규칙·비용·검
 | `app/research/ledger.py`, `app/ledger/` | 실험 원장: 사전 등록, 명세 버전, 실행·실패 기록, manifest·산출물 연결, 결정, 무결성 검사(JSONL 해시 체인, 삭제 기능 없음) |
 | `app/research/factors.py`, `app/factorlab/` | Factor Lab: 요인 계산(≤ t), t+1 시가 진입·t+1+h 시가 청산, IC·Rank IC·분위·회전율·비용·벤치마크 |
 | `app/strategies/catalog.py`, `app/strategy_library.py` | Strategy Library: 전략 템플릿 메타데이터·파라미터 검증, `run_report`로 실행, 구간별·회전율·커버리지, 같은 조건 비교, Ledger 사전 등록(`/api/library/*`, 화면 "Strategy Library" 탭) |
+| `app/research/eligibility.py` | 연구 데이터 적격성(`eligibility-v1`): 감사 산출물 해시 확인, 실행 행 지문과 감사 지문 대조, 제외/검토 종목, 감사 범위·신선도, 출처 기록·독립 대조. Factor Lab manifest·Strategy Library 요약·원장 facts에 기록, 두 게이트의 `data_eligibility` 검사 |
 | `app/research/robustness_strategy.py` | Strategy Library 저장 실행용 Robustness Gate(별도 어댑터, Factor Lab 게이트는 변경 없음), `POST /api/library/runs/{id}/robustness` |
 | `app/research/robustness.py`, `app/robustness/` | Robustness Gate: 기간 분리·사전 등록·표본·표본 외·워크포워드·비용·이웃 파라미터·감사·데이터 상태·재현성 검사 |
 | `app/crosscheck/` | 실제 API 교차 검증 실행기 |

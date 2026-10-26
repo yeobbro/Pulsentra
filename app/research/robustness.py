@@ -23,6 +23,7 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
+from app.research.eligibility import gate_check as eligibility_check
 from app.research.manifest import file_sha256
 
 PASS, WATCH, FAIL, INSUFFICIENT = "PASS", "WATCH", "FAIL", "INSUFFICIENT_DATA"
@@ -258,6 +259,8 @@ def evaluate(factorlab_dir: Path, factor: str, gate: GateConfig | None = None, l
     vs = (m.get("validity") or {}).get("status")
     checks.append(_check("data_validity", {"VERIFIED": PASS, "PROVISIONAL": WATCH}.get(vs, FAIL), f"manifest validity {vs}",
                          unverified=(m.get("validity") or {}).get("unverified_items"), ineligible=(m.get("validity") or {}).get("ineligible_reasons")))
+    # 11b. data eligibility recorded at run time (eligibility-v1); absent in older runs
+    checks.append(eligibility_check(m.get("data_eligibility"), m.get("data_fingerprint")))
     # 12. reproducibility
     git = m.get("git") or {}
     mism = []

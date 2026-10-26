@@ -410,6 +410,8 @@ def manifest_facts(m: dict) -> dict:
         "primary_metrics": m.get("primary_metrics"),
         "started_utc": m.get("started_utc"), "finished_utc": m.get("finished_utc"),
         "ledger_experiment": m.get("ledger_experiment"),
+        "data_eligibility": None if not isinstance(m.get("data_eligibility"), dict) else {
+            k: m["data_eligibility"].get(k) for k in ("rules_version", "status", "label", "data_scope", "real_data_verified", "assessed_utc")},
     }
 
 

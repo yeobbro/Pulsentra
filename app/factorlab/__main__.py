@@ -21,6 +21,8 @@ from pathlib import Path
 import pandas as pd
 
 from app.research.data import load_naver_raw, load_standard_csv, sample_description
+from app.research.eligibility import assess as assess_eligibility
+from app.research.eligibility import facts_from_bars, load_audit_evidence
 from app.research.factors import FactorLabConfig, default_factors, run_factorlab
 from app.research.ledger import Ledger, LedgerError
 from app.research.manifest import environment_info, git_info, guard_output_dir, output_inventory
@@ -41,6 +43,8 @@ def write_report(out: Path, res: dict, manifest: dict) -> None:
     lines = ["# Factor Lab 결과", "", f"- 명령: `{manifest['command']}`",
              f"- 코드: `{manifest['git'].get('commit_short')}` (재현 가능: {manifest['git'].get('reproducible_from_commit')})",
              f"- 데이터 지문: `{manifest['data_fingerprint']}` · 결과 상태: **{manifest['validity']['status']}**",
+             f"- 데이터 적격성: **{manifest['data_eligibility']['label']}** ({manifest['data_eligibility']['rules_version']}, "
+             f"실제 데이터 검증 완료: {'예' if manifest['data_eligibility']['real_data_verified'] else '아니오'})",
              f"- 보유 {manifest['config']['horizon']}거래일, 진입 t+1 시가 → 청산 t+1+h 시가, 분위 {manifest['config']['quantiles']}개",
              f"- 비용(편도): 매수 {manifest['cost_assumptions']['buy_side_bps']}bp, 매도 {manifest['cost_assumptions']['sell_side_bps']}bp "
              f"(왕복 {manifest['cost_assumptions']['round_trip_bps']}bp). 공매도 대차비용·제한은 반영하지 않음",
@@ -94,6 +98,15 @@ def run(a, argv) -> int:
         if ds.bars.empty:
             raise ValueError("REAL 데이터가 없습니다")
         res = run_factorlab(ds.bars, ds.calendar, cfg, ds.indices.get("KOSPI"))
+        verified = {}
+        if a.crosscheck:
+            verified = {k: bool(v) for k, v in (json.loads(Path(a.crosscheck).read_text(encoding="utf-8")).get("verified") or {}).items()}
+        dropped = set(res["audit"]["drop"]) if res["audit"] else set()
+        facts = facts_from_bars(ds.bars, data_fingerprint=_fingerprint(ds.bars), requested_start=a.start, requested_end=a.end,
+                                source_record={k: v for k, v in ds.provenance.items()} or None, verifications=verified,
+                                audit_applied=bool(res["audit"]))
+        facts.symbols = [x for x in facts.symbols if x not in dropped]
+        eligibility = assess_eligibility(facts, load_audit_evidence(a.audit))
         out.mkdir(parents=True, exist_ok=True)
         res["by_date"].to_csv(out / OUTPUTS[0], index=False)
         res["quantiles"].to_csv(out / OUTPUTS[1], index=False)
@@ -119,7 +132,7 @@ def run(a, argv) -> int:
             "configs_tested_per_strategy": 1, "experiments_total": len(cfg.factors),
             "audit": None if not res["audit"] else {k: res["audit"][k] for k in ("dir", "review_share", "usable_fingerprint", "input_fingerprint")}
             | {"symbols_dropped": res["panel_counts"].get("audit_symbols_dropped", 0)},
-            "validity": validity, "ledger_experiment": spec,
+            "validity": validity, "ledger_experiment": spec, "data_eligibility": eligibility,
             "not_implemented": ["PBO", "deflated Sharpe ratio", "dividend / total return", "short borrow costs"],
         }
         manifest["outputs"] = output_inventory(out, skip=("run_manifest.json", "REPORT.md"))
@@ -155,6 +168,7 @@ def main(argv: list[str] | None = None) -> int:
     r.add_argument("--min-names", type=int, default=30, help="minimum names per date")
     r.add_argument("--min-turnover", type=float, help="KRW/day 20-day average (default: StudyConfig 1e9)")
     r.add_argument("--audit", help="audit folder from python -m app.audit")
+    r.add_argument("--crosscheck", help="crosscheck_status.json; only checks that ran and passed count as verified")
     r.add_argument("--ledger", default="data/ledger/ledger.jsonl"); r.add_argument("--ledger-id"); r.add_argument("--run-id")
     r.add_argument("--overwrite", action="store_true")
     a = ap.parse_args(argv)
