@@ -1,4 +1,4 @@
-# 연구 데이터 적격성과 감사 출처 (`eligibility-v1`)
+# 연구 데이터 적격성과 감사 출처 (`eligibility-v3`)
 
 코드 `app/research/eligibility.py` · 테스트 `tests/test_data_eligibility.py` · 브랜치 `feat/research-data-eligibility`(미커밋)
 
@@ -25,7 +25,7 @@
 |---|---|---|---|---|
 | data_scope | 출처 표시가 실제 데이터 | — | DEMO·합성 또는 혼합 | 출처 미기록 |
 | source_record | 수집 기록(출처·수집 시각·파일 해시) 있음 | 누락 파일·수집 실패가 있음 | — | 수집 기록 없음 |
-| source_verification | 독립 출처 가격 대조(`cross_source_price_check`)가 실행되어 통과 | 수집 기록은 있으나 대조 결과 없음 | — | 수집 기록도 대조도 없음 |
+| source_verification | 독립 출처 가격 대조(`cross_source_price_check`)가 연구 기간 전체에 대해 통과 | 대조 결과 없음, 또는 일부 날짜만 대조, 또는 (v3) 확인되지 않은 조정 가능 행이 있음, 또는 증거 날짜가 실행 기간 밖 | (v2) 가격 증거가 손상됐거나 만든 뒤 원본이 바뀜, 또는 실행 기간 안 대조 날짜에 설명되지 않은 가격 불일치 | 수집 기록도 대조도 없음 |
 | audit_present | 감사 폴더가 있고 산출물 SHA-256이 감사 manifest와 일치 | — | 폴더·파일 누락, JSON 손상, 감사 후 산출물 변경 | 연결된 감사 없음 |
 | audit_fingerprint | 실행 행의 `bars_fingerprint` = 감사 `usable_fingerprint` | — | 같은 기간인데 지문이 다름 | 지문 없음, 또는 기간이 달라 동일성 확인 불가 |
 | audit_coverage | 실행 종목·날짜가 감사 범위 안 | — | 감사에 없는 종목, 감사 마지막 날짜 이후·시작일 이전 데이터 | — |
@@ -64,3 +64,70 @@
 - `app.research`(전략 연구 파이프라인) 실행에는 적격성 기록을 넣지 않았습니다. 이 파이프라인은 기존 manifest의 `audit.usable_rows_match_study`만 기록합니다.
 - 앱 DB 데이터에 대한 수집 기록과 감사 연결이 없습니다.
 - 감사 이후 데이터 파일이 바뀌었는지는 지문 비교로만 알 수 있습니다. 수집 manifest의 파일 해시를 다시 대조하는 기능은 없습니다.
+
+## v2 변경 (2026-10-26) — 가격 교차 검증 증거
+
+- `eligibility-v2`부터 source_verification이 저장된 가격 대조 증거(`app/research/price_evidence.py`)도 읽습니다.
+- 증거가 없는 입력은 v1과 같은 결과를 냅니다.
+- 판정 순서(위 표 기준):
+  1. 증거가 손상됐거나 만든 뒤 원본이 바뀌었으면 FAIL.
+  2. 실행 기간 안의 대조 날짜에 설명되지 않은 가격 불일치가 있으면 FAIL.
+  3. 대조한 날짜가 일부뿐이거나 실행 기간 밖이면 WATCH.
+- 기간 전체를 대조했다는 플래그(`verified.cross_source_price_check = true`)가 있어도, 증거가 불일치를 보이면 PASS가 아닙니다.
+
+## v3 변경 (2026-10-26) — 확인되지 않은 조정 분리
+
+- 가격 증거 규칙이 `price-evidence-v2`로 바뀌었습니다. 허용 오차(가격 0.1%, 거래량 1%)와 최소 비교 행 수(100)는 그대로입니다.
+- 날짜 상태는 세 가지입니다.
+
+| 상태 | 조건 | `passed` |
+|---|---|---|
+| `PASSED` | 비교 가능 100행 이상, 미해결 가격 불일치 0행, 확인되지 않은 조정 가능 0행 | true |
+| `PASSED_WITH_UNVERIFIED_ADJUSTMENTS` | 미해결 0행이지만 네 가격이 같은 배율로 다른 행(`unverified_adjustments`)이 있음 | false |
+| `FAILED` | 비교 가능 행 부족, 또는 미해결 가격 불일치 있음 | false |
+
+- `unverified_adjustments`는 확정된 조정이 아닙니다. 기업행동 공시와 맞춰 본 행이 없으므로 원인을 배정하지 않습니다.
+  - 하위 집계: 분할 비율형(`split_like_…`), 1배율 ±3% 이내(`near_one_…`), 기타(`other_…`).
+- 전체 `price_check.passed`는 모든 날짜가 `PASSED`일 때만 true입니다.
+- 산출물(`crosscheck_status.json`, 날짜별 결과)에 `rules_version`을 기록합니다.
+- 적격성 v3 source_verification:
+  1. 증거 손상·원본 변경 → FAIL (v2와 같음).
+  2. 실행 기간 안의 미해결 가격 불일치 → FAIL (v2와 같음).
+  3. 확인되지 않은 조정 가능 행이 있으면 최소 WATCH. 기간 전체 플래그가 true여도 PASS가 아닙니다.
+  4. 다른 검사가 FAIL이면 전체 판정은 FAIL입니다.
+- 판정 설명은 "불일치 없음" 대신 실제 수를 적습니다: 대조 날짜 수, 통과·미검증 조정 포함 날짜 수, 미해결·미검증·근접 1배율·비교 불가 행 수, 그리고 "조정은 기업행동 자료로 확인되지 않았고, 대조한 날짜 외 기간은 검증되지 않음".
+- 요약 값에는 증거 SHA-256, 규칙 버전, 증거 기간과 실행 기간, 실행 기간 안·밖 날짜도 들어갑니다.
+- v1 증거 파일도 읽습니다. 그 파일의 `price_adjustment_basis_possible` 행은 확인되지 않은 조정으로 셉니다. 근접 1배율 집계는 v1에 없으므로 "집계 없음"으로 표시합니다.
+
+### 증거 생성
+`python -m app.krxcheck.evidence --out data/crosscheck/price_evidence_<시각> --audit data/audit/<run>`
+
+- 저장된 KRX 응답만 씁니다. 네트워크 요청과 키는 쓰지 않습니다.
+- 행 분류는 `fullmarket.compare_market`과 `classify_pair`를 그대로 씁니다.
+- 허용 오차는 기존 값(가격 0.1%, 거래량 1%)이고, 날짜당 비교 가능 행이 100개 이상이어야 합니다.
+- 산출물의 `crosscheck_status.json`은 기존 계약(`verified`)과 호환됩니다. `verified.cross_source_price_check`는 기간 전체를 대조했을 때만 true이며, 날짜 표본만으로는 항상 false입니다.
+- `source_files.json`에 원본 857개 파일의 SHA-256을 남기고, 증거를 읽을 때 다시 확인합니다.
+- Factor Lab에서는 `--crosscheck <증거>/crosscheck_status.json`으로 연결합니다.
+
+### 실제 실행 결과 (`price-evidence-v2`, `data/crosscheck/price_evidence_20261026T062502Z`, Git 제외)
+
+v1 결과 폴더 `price_evidence_20261026T045447Z`는 그대로 두었습니다. 행 수는 같고 날짜 상태만 다릅니다.
+
+| 날짜 | KRX 행 | 비교 가능 | 종가 정확 일치 | 종가 0.1% 이내 | 거래량 정확 일치 | 미검증 조정 가능(분할형/근접1/기타) | 미해결 가격 | v2 상태 | v1 통과 |
+|---|---:|---:|---:|---:|---:|---:|---:|---|---|
+| 2025-02-27 | 961 | 826 | 712 (86.2%) | 712 (86.2%) | 712 (86.2%) | 114 (68/10/36) | 0 | PASSED_WITH_UNVERIFIED_ADJUSTMENTS | 예 |
+| 2025-06-12 | 962 | 823 | 720 (87.5%) | 720 (87.5%) | 720 (87.5%) | 103 (64/8/31) | 0 | PASSED_WITH_UNVERIFIED_ADJUSTMENTS | 예 |
+| 2026-10-22 | 940 | 803 | 112 (13.9%) | 131 (16.3%) | 803 (100%) | 0 | 711 | FAILED | 아니오 |
+| 2026-10-23 | 940 | 803 | 131 (16.3%) | 149 (18.6%) | 103 (12.8%) | 0 | 675 | FAILED | 아니오 |
+
+비교 불가 행은 4일 합계 85행(2025년 2일 41행)입니다.
+
+**적격성 판정 변화** (2016-01-01부터 감사 적용 조건, 판정만 실행):
+
+| 경우 | v2 판정 | v3 판정 |
+|---|---|---|
+| 증거 없음 | REVIEW_REQUIRED | REVIEW_REQUIRED (같음) |
+| 증거 있음, 데이터 끝이 2026-10-23 | UNUSABLE | **UNUSABLE** (같음) — 실행 기간 안의 10-22·10-23에 미해결 가격 불일치 1,386행 |
+| 증거 있음, 데이터를 2026-10-21에서 자름 | source_verification WATCH, 설명 "2개 거래일만 대조(불일치 없음)" | source_verification WATCH, 설명 "2개 거래일 대조: 통과 0일, 미검증 조정 포함 2일 · 미해결 0행 · 확인되지 않은 조정 가능 217행(근접 1배율 18행) · 비교 불가 41행". 전체 판정은 둘 다 INSUFFICIENT_EVIDENCE — 감사 기간과 달라 지문 동일성을 확인할 수 없음 |
+
+v1 증거 폴더로 v3 판정을 실행해도 같은 판정이 나옵니다(근접 1배율만 "집계 없음").

@@ -15,6 +15,7 @@
 | Phase 2 — Factor Lab | 모멘텀·반전·거래량·변동성·유동성 요인의 사전 정의된 연구 공간. 요인별 성과, IC/Rank IC, 분위별 수익률, 회전율, 비용, 벤치마크 비교. 같은 데이터 범위와 시점 규칙으로 공정 비교 | 🟡 MVP: `app/research/factors.py`, `python -m app.factorlab` (요인 8개). 전체 기간 실제 데이터 실행 전, 배당·대차비용 미반영, 미커밋 |
 | Phase 3 — Robustness Gate | 워크포워드·표본 외 검증, 다중 실험의 선택 편향 통제, 비용·슬리피지 스트레스, 파라미터 안정성, 시장 국면별 성과, 데이터 감사 상태에 따른 검증 제한 | 🟡 MVP: `app/research/robustness.py`, `python -m app.robustness` (`docs/ROBUSTNESS_GATE.md`). PBO·DSR·국면별 판정 미구현, 미커밋 |
 | 추가 — 연구 데이터 적격성·감사 출처 | 실행마다 데이터 출처·감사 지문·제외/검토 종목·감사 범위를 판정해 기록(`eligibility-v1`), 두 게이트 공통 검사 | 🟡 구현(미커밋, `docs/DATA_ELIGIBILITY.md`). 실제 데이터는 REVIEW_REQUIRED(감사 적용 시) |
+| 추가 — 가격 교차 검증 증거 | 저장된 KRX 응답과 로컬 일봉 대조 결과를 적격성 증거로 기록(`price-evidence-v2`, 적격성 v3) | 🟡 구현(미커밋). 통과 0일 · 미검증 조정 포함 2일(2025년, 217행) · 실패 2일(2026-10-22·23 미해결 불일치) → 해당 날짜를 포함한 실행은 UNUSABLE |
 | Phase 4 — Edge Decay Monitor | 검증 후보와 모의투자 관측 성과의 차이 추적. 표본 수와 통계적 불확실성을 고려한 성능 변화 경고 | ⬜ |
 | Phase 5 — Evidence-based Research Copilot | 실제 계산 결과와 문서에 근거해 분석을 설명하고 다음 실험을 제안. 근거 없는 결과는 만들지 않음 | ⬜ |
 

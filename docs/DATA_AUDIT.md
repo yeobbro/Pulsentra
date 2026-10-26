@@ -116,3 +116,23 @@ CLI에서 `--jump-threshold`, `--volume-break-factor`, `--no-gap-volume-shift`�
 - **실제 데이터로 실행함(2026-10-24, 2회)**: `data/audit/full_20261024T060804Z_a`, `_b`. v0.3 보고서의 수치(`non_positive_price` 1,461행·1종목, `ohlc_inconsistent` 179행·23종목, `volume_level_break` 1,991건·559종목, `price_jump` 2,454행, 반올림 보정 24,379행)가 그대로 재현됐고, 두 실행의 지문이 같습니다. 종목 상태: ok 597 / review 2,225 / exclude 2.
 - **아직 하지 않은 것**: 이상의 원인 확인(예: `non_positive_price`가 몰린 084440), `review` 종목 검토, 감사 결과를 반영한 연구 재실행(`--audit`).
 - **감사와 연구 적격성은 별개입니다.** 감사 결과를 연구 실행에 어떻게 적용·판정하는지는 [`DATA_ELIGIBILITY.md`](DATA_ELIGIBILITY.md)에 있습니다. 2026-10-26 판정만 실행해 본 결과, 실제 데이터 행 지문은 감사 `_a`의 사용 가능 행 지문 `1ea20b72f9562ede`와 일치했습니다.
+
+## 가격 교차 검증 증거 (2026-10-26, `price-evidence-v2`)
+
+- 저장된 KRX 유가증권 응답 4개 거래일을 로컬 naver_raw와 다시 비교했습니다(`python -m app.krxcheck.evidence`, 오프라인).
+  - 기존 비교 결과(`data/krxcheck/full_market_*/compare`)와 상태별 행 수, 로컬 파일 지문, KRX 원본 해시가 모두 같아 **재현됐습니다**.
+  - 기존 결과 파일은 수정하지 않았습니다.
+  - 규칙별 산출물(Git 제외, 둘 다 보존): v1 `data/crosscheck/price_evidence_20261026T045447Z`, v2 `data/crosscheck/price_evidence_20261026T062502Z`.
+- **날짜 상태(v2):** `PASSED` 0일, `PASSED_WITH_UNVERIFIED_ADJUSTMENTS` 2일, `FAILED` 2일. 전체 `price_check.passed`는 false입니다.
+- **2025-02-27·2025-06-12 → `PASSED_WITH_UNVERIFIED_ADJUSTMENTS`:** 미해결 가격 불일치는 0행입니다.
+  - 차이가 난 114·103행은 네 가격이 같은 방향·같은 배율로 다른 행으로, `unverified_adjustments`(확인되지 않은 조정 가능)로 따로 셉니다.
+  - 내역: 분할 비율형 68·64행, 1배율 ±3% 이내(`near_one_unverified_adjustments`) 10·8행, 기타 36·31행.
+  - 기업행동 공시로 확인한 행은 0행입니다. 원인을 배정하지 않으며, 이 행이 있는 날짜는 통과(`passed`)로 세지 않습니다.
+  - v1은 같은 행을 `price_adjustment_basis_possible`로 분류하고 날짜를 통과로 셌습니다. 그 결과는 v1 폴더에 그대로 두었습니다.
+- **2026-10-22 → `FAILED`:** 비교 가능 803행 모두 시가·거래량이 일치합니다. 종가는 112행(13.9%)만 일치하고, 미해결 가격 불일치가 711행입니다.
+- **2026-10-23 → `FAILED`:** 미해결 가격 불일치 675행, 거래량 정확 일치 103행(12.8%)이며 로컬 거래량이 KRX보다 작은 비율이 87%입니다.
+- **원인은 확정하지 않았습니다.** 확인된 사실은 다음과 같습니다.
+  - 불일치는 두 최근 날짜에만 있습니다.
+  - 로컬 수집 기록상 수집 시각은 2026-10-23 10:02~10:31 UTC(한국 19:02~19:31)로, 두 날짜의 정규장 마감 이후입니다.
+  - 따라서 "장중 수집으로 일봉이 미완성"이라는 설명은 수집 시각과 맞지 않으며, 다른 가설도 검증되지 않았습니다.
+- **범위 한계:** KOSPI 4개 거래일뿐입니다. KOSDAQ과 2016년 이후 다른 날짜는 대조하지 않았습니다. 비교 불가 행은 4일 합계 85행으로 따로 셉니다.
