@@ -17,6 +17,7 @@ def _git(*args: str) -> str:
 @pytest.mark.skipif(not HAS_GIT, reason="not a git checkout")
 @pytest.mark.parametrize("path", [".env", ".env.local", ".env.production", "data/real/raw/005930.csv", "data/real/universe.csv",
                                   "data/raw/x.csv", "data/cache/x.json", "data/audit/run/findings.csv", "data/crosscheck/run/a.csv", "data/krxcheck/run/plan.json",
+                                  "data/ledger/ledger.jsonl", "data/factorlab/run/factor_summary.csv", "data/factorlab/run/run_manifest.json", "data/robustness/run/gate.json", "data/library/bt-1/run_manifest.json",
                                   "data/market_signal_lab.sqlite3", "data/models/m.joblib", "local.db",
                                   "reports/v0.4/strategy_exit_grid.csv", "reports/v0.4/trades/portfolio_a.csv", "reports/x/a.parquet"])
 def test_sensitive_paths_are_ignored(path):

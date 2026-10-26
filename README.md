@@ -23,6 +23,25 @@ Pulsentra는 종목을 추천하는 서비스가 아닙니다. 시장 데이터�
 
 테스트 통과는 코드가 정해진 동작을 한다는 뜻이고, 실제 데이터로 전략이 검증됐다는 뜻이 아닙니다. 다음 목표는 **Pulsentra Alpha Research Lab v1**입니다([`docs/IMPLEMENTATION_ROADMAP.md`](docs/IMPLEMENTATION_ROADMAP.md)).
 
+## Alpha Research Lab v1 (브랜치 `feat/alpha-research-lab-v1`, 미커밋 MVP)
+
+실험을 먼저 등록하고, 요인을 같은 규칙으로 평가하고, 고정된 검사로 판정합니다. 진행 상황: [`docs/ALPHA_RESEARCH_LAB_V1_PROGRESS.md`](docs/ALPHA_RESEARCH_LAB_V1_PROGRESS.md).
+
+```bash
+python -m app.ledger template > spec.json                    # 사전 등록 양식 (채워서 등록)
+python -m app.ledger register spec.json                      # data/ledger/ledger.jsonl (append-only, 해시 체인)
+python -m app.factorlab run --data data/real --out data/factorlab/run1 --audit data/audit/run1 --ledger-id <ID>
+python -m app.robustness evaluate --factorlab data/factorlab/run1 --factor mom_60 --out data/robustness/run1 --ledger-id <ID>
+python -m app.ledger decide <ID> hold --reason "..."         # 결정은 사람이, 이유와 함께
+python -m app.ledger verify --files                          # 원장·연결 파일 무결성
+```
+
+- Factor Lab: 모멘텀(20/60/120)·반전·변동성·거래대금·거래대금 비율·비유동성, IC·Rank IC·분위 수익률·회전율·비용 후 동일가중 대비 초과수익. 요인 ≤ t, 진입 t+1 시가, 청산 t+1+h 시가.
+- Robustness Gate: PASS / WATCH / FAIL / INSUFFICIENT_DATA, 기준은 [`docs/ROBUSTNESS_GATE.md`](docs/ROBUSTNESS_GATE.md). PBO·Deflated Sharpe는 미구현.
+  Strategy Library 저장 실행도 별도 어댑터로 평가합니다(`POST /api/library/runs/{id}/robustness`). 현재 앱 DB 실행은 감사·결과 상태가 연결되지 않아 PASS가 나올 수 없고, DEMO 실행은 FAIL입니다.
+- 실제 데이터는 범위를 제한한 스모크 실행 1회뿐이며(2023년 이후, 판정 INSUFFICIENT_DATA) 연구 결론이 아닙니다.
+- **Strategy Library**(대시보드 "Strategy Library" 탭, `/api/library/*`): 대표 전략 템플릿 18개(AVAILABLE 13 · LIMITED 2 · PLANNED 3)의 원리·규칙·파라미터 범위를 보고, Strategy Lab과 같은 엔진으로 백테스트·같은 조건 비교·Experiment Ledger 사전 등록을 합니다. 인기·성과 순위가 아닙니다. [`docs/STRATEGY_LIBRARY.md`](docs/STRATEGY_LIBRARY.md)
+
 ## v0.4 (진행 중) — 데이터 감사·재현성·교차 검증
 
 v0.4는 v0.3 결과를 믿을 수 있는지 판단할 도구를 만드는 단계입니다. 새 전략이나 성과는 없습니다. 자세한 내용은 [`docs/RESEARCH_V0_4.md`](docs/RESEARCH_V0_4.md)에 있습니다.
@@ -98,7 +117,18 @@ python -m pytest -q -W error::DeprecationWarning  # CI와 같은 엄격 모드
 
 실제 API를 부르는 테스트는 `integration` 마커가 붙어 있고, `PULSENTRA_RUN_INTEGRATION=1`과 키가 있을 때만 실행됩니다.
 
-최근 결과(2026-10-25, `research/v0.4-data-audit` `2292168`): `python -m pytest -q` → **272 passed, 2 skipped, 1 warning**. Mac Python 3.14.6(사용자 실행)과 Linux Python 3.10에서 같은 결과입니다. 건너뛴 2개는 키가 필요한 실제 API 스모크 테스트이고, 경고 1건은 `starlette.testclient`의 `httpx` 사용 방식에 대한 `StarletteDeprecationWarning`입니다.
+`feat/alpha-research-lab-v1` 작업 트리(미커밋, 2026-10-26), `python -m pytest -q -W error::DeprecationWarning`:
+
+| 환경 | 결과 |
+|---|---|
+| Linux VM, Python 3.10.12, numpy 2.2.6 · pandas 2.3.3 | **389 passed, 2 skipped, 1 warning** (기존 272 + 원장·Factor Lab·Gate 67 + Strategy Library 31 + Strategy Library 게이트 19) |
+| 클라우드 Linux, Python 3.14.6 + `requirements-lock.txt`(numpy 2.5.4, Mac `.venv`와 같은 버전) | 날짜 계산 3곳 수정 전 34 failed · 수정 후 **389 passed, 2 skipped, 1 warning**(임시 git 저장소에서 실행, `.git` 없이 실행하면 저장소 규칙 테스트 23개가 추가로 skip) |
+| Mac 본체(`.venv`, Python 3.14.6) | **미검증** |
+| CI(GitHub Actions) | **미검증**(커밋 전) |
+
+numpy 2.5에서 `pd.Timedelta(days=N)`이 DeprecationWarning을 내 엄격 모드에서 실패하던 것을 `pd.Timedelta(N, unit="D")`로 고쳤습니다.
+
+이전 결과(2026-10-25, `research/v0.4-data-audit` `2292168`): `python -m pytest -q` → **272 passed, 2 skipped, 1 warning**. Mac Python 3.14.6(사용자 실행)과 Linux Python 3.10에서 같은 결과입니다. 건너뛴 2개는 키가 필요한 실제 API 스모크 테스트이고, 경고 1건은 `starlette.testclient`의 `httpx` 사용 방식에 대한 `StarletteDeprecationWarning`입니다.
 
 ## 처음 사용하는 순서
 
@@ -143,7 +173,14 @@ app/
   audit/             감사 CLI (python -m app.audit)
   crosscheck/        공식 출처 교차 검증 CLI (python -m app.crosscheck)
   krxcheck/          KRX 시세 대조 CLI (표본·전체 시장·다중 거래일 리포트, 연구용 로컬 전용)
-  research/          리서치 로더·연구·보고서, manifest(재현 정보), validity(결과 상태), crosscheck(비교 로직)
+  research/          리서치 로더·연구·보고서, manifest(재현 정보), validity(결과 상태), crosscheck(비교 로직),
+                     ledger(실험 원장), factors(Factor Lab), robustness(Robustness Gate)
+  strategies/catalog.py  Strategy Library 카탈로그(메타데이터·파라미터 범위)
+  strategy_library.py    Strategy Library 실행·비교·원장 연결·게이트 근거 수집
+  research/robustness_strategy.py  Strategy Library 실행용 Robustness Gate
+  ledger/            실험 원장 CLI (python -m app.ledger)
+  factorlab/         Factor Lab CLI (python -m app.factorlab)
+  robustness/        Robustness Gate CLI (python -m app.robustness)
   providers/         KIS(시세), OpenDART(공시), http(재시도 상한)
   indicators.py      인과적 지표 (+ INDICATOR_SPECS 계산식)
   scanner.py         스캐너, 긍정·부정 근거
