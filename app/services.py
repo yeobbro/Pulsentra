@@ -69,7 +69,7 @@ def fingerprint(frame: pd.DataFrame) -> str:
 
 def save_backtest(kind: str, request: dict, frame: pd.DataFrame, report: dict, db_path=None) -> int:
     info = report.get("data") or data_info(frame, None)
-    summary = {k: report.get(k) for k in ("metrics", "benchmark", "cost_impact", "out_of_sample", "rows", "variants", "period") if k in report}
+    summary = {k: report.get(k) for k in ("metrics", "benchmark", "cost_impact", "out_of_sample", "rows", "variants", "period", "library") if k in report}
     return db.execute("""INSERT INTO backtest_runs (created_at, kind, request, data_fingerprint, sources, quality_warnings, summary, synthetic)
                          VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
                       (db.utc_now(), kind, db.dumps(request), fingerprint(frame), db.dumps(info.get("sources")),

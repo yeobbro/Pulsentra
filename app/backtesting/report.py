@@ -81,7 +81,7 @@ def run_report(frame: pd.DataFrame, strategy_key: str, strategy_params: dict | N
                exit_cfg: ExitConfig | None = None, risk: RiskConfig | None = None, costs: CostModel | None = None,
                benchmark: pd.DataFrame | None = None, instruments: pd.DataFrame | None = None,
                start: str | None = None, end: str | None = None, random_runs: int = 10,
-               signal_filter: Callable | None = None, prepared: dict | None = None) -> dict:
+               signal_filter: Callable | None = None, prepared: dict | None = None, keep_full: bool = False) -> dict:
     exit_cfg = exit_cfg or ExitConfig()
     risk = risk or RiskConfig()
     costs = costs or CostModel()
@@ -126,7 +126,9 @@ def run_report(frame: pd.DataFrame, strategy_key: str, strategy_params: dict | N
                        "note": "같은 진입 빈도·청산·비용 규칙으로 무작위 진입한 결과 분포. 전략이 상위에 있지 않으면 우위가 확인되지 않은 것."}
 
     index_curve = bench_curve
-    return {
+    full = {"_equity_full": eq, "_gross_equity_full": gross["equity"], "_trades_full": net["trades"],
+            "_gross_trades_full": gross["trades"], "_benchmark_full": bench_curve} if keep_full else {}
+    return {**full,
         "strategy": strategy.describe(), "exit": exit_cfg.to_dict(), "risk": risk.to_dict(), "costs": costs.to_dict(),
         "period": {"start": em.get("start"), "end": em.get("end")},
         "metrics": {**em, **tm, "signals": net["signals"], "skipped_signals": net["skipped"], "halted_days": net["halted_days"]},

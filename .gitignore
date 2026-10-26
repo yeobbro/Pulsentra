@@ -27,3 +27,8 @@ reports/v0.4-compare/
 *.sqlite3
 *.sqlite3-journal
 *.db
+# Alpha Research Lab v1 runtime records and outputs (local only)
+data/ledger/
+data/factorlab/
+data/robustness/
+data/library/
