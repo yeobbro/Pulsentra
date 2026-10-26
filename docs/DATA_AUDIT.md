@@ -119,10 +119,12 @@ CLI에서 `--jump-threshold`, `--volume-break-factor`, `--no-gap-volume-shift`�
 
 ## 가격 교차 검증 증거 (2026-10-26, `price-evidence-v2`)
 
+코드는 PR #7(`03c4463`)로 병합됐습니다. 아래 결과는 KOSPI 4개 거래일만 대조한 로컬 실행 결과이며, 연구 기간 전체 검증이 아닙니다.
+
 - 저장된 KRX 유가증권 응답 4개 거래일을 로컬 naver_raw와 다시 비교했습니다(`python -m app.krxcheck.evidence`, 오프라인).
   - 기존 비교 결과(`data/krxcheck/full_market_*/compare`)와 상태별 행 수, 로컬 파일 지문, KRX 원본 해시가 모두 같아 **재현됐습니다**.
   - 기존 결과 파일은 수정하지 않았습니다.
-  - 규칙별 산출물(Git 제외, 둘 다 보존): v1 `data/crosscheck/price_evidence_20261026T045447Z`, v2 `data/crosscheck/price_evidence_20261026T062502Z`.
+  - 규칙별 산출물(Git 제외, 둘 다 보존, 둘 다 병합 전 작업 트리 코드로 생성): v1 `data/crosscheck/price_evidence_20261026T045447Z`, v2 `data/crosscheck/price_evidence_20261026T062502Z`.
 - **날짜 상태(v2):** `PASSED` 0일, `PASSED_WITH_UNVERIFIED_ADJUSTMENTS` 2일, `FAILED` 2일. 전체 `price_check.passed`는 false입니다.
 - **2025-02-27·2025-06-12 → `PASSED_WITH_UNVERIFIED_ADJUSTMENTS`:** 미해결 가격 불일치는 0행입니다.
   - 차이가 난 114·103행은 네 가격이 같은 방향·같은 배율로 다른 행으로, `unverified_adjustments`(확인되지 않은 조정 가능)로 따로 셉니다.
