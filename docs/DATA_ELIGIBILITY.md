@@ -1,6 +1,8 @@
 # 연구 데이터 적격성과 감사 출처 (`eligibility-v3`)
 
-코드 `app/research/eligibility.py` · 테스트 `tests/test_data_eligibility.py` · 브랜치 `feat/research-data-eligibility`(미커밋)
+코드 `app/research/eligibility.py`, `app/research/price_evidence.py` · 테스트 `tests/test_data_eligibility.py`, `tests/test_price_evidence.py`
+
+`eligibility-v1`은 PR #6(`f927820`), `eligibility-v3`과 `price-evidence-v2`는 PR #7(`03c4463`)로 `research/v0.4-data-audit`에 병합됐습니다. `eligibility-v2`와 `price-evidence-v1`은 PR #7 작업 중 단계로, 따로 커밋되지 않았습니다.
 
 **데이터 감사(audit)와 연구 적격성(eligibility)은 다른 판단입니다.**
 - 감사(`python -m app.audit`): 데이터 묶음에 어떤 문제가 있는지 기록합니다.
@@ -111,7 +113,9 @@
 
 ### 실제 실행 결과 (`price-evidence-v2`, `data/crosscheck/price_evidence_20261026T062502Z`, Git 제외)
 
-v1 결과 폴더 `price_evidence_20261026T045447Z`는 그대로 두었습니다. 행 수는 같고 날짜 상태만 다릅니다.
+이 산출물은 병합 전 작업 트리 코드로 생성되어 `reproducible_from_commit: false`로 기록돼 있습니다. 병합 커밋(`03c4463`)의 코드로 임시 폴더에 다시 생성해 비교한 결과, 생성 시각·도구 정보를 제외한 판정 파일, 날짜별 비교 파일 4개, 원본 파일 해시 목록이 일치했습니다(2026-10-26). 원본 산출물은 수정하지 않았으며 재생성 결과도 저장소에 추가하지 않았습니다. 원본 산출물의 미커밋 파일 목록에 있는 `pp/factorlab/__main__.py`는 PR #8(`654f277`)로 고친 경로 파싱 버그의 흔적이며, 실제 경로는 `app/factorlab/__main__.py`입니다(산출물은 소급 수정하지 않음).
+
+v1 결과 폴더 `price_evidence_20261026T045447Z`(커밋되지 않은 작업 중 코드로 생성)는 그대로 두었습니다. 행 수는 같고 날짜 상태만 다릅니다.
 
 | 날짜 | KRX 행 | 비교 가능 | 종가 정확 일치 | 종가 0.1% 이내 | 거래량 정확 일치 | 미검증 조정 가능(분할형/근접1/기타) | 미해결 가격 | v2 상태 | v1 통과 |
 |---|---:|---:|---:|---:|---:|---:|---:|---|---|

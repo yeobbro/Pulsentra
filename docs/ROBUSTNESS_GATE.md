@@ -107,7 +107,7 @@ PBO(CSCV), Deflated Sharpe Ratio, White Reality Check / Hansen SPA, 시장 국�
   미구현: PBO, Deflated Sharpe, Reality Check/SPA, 파라미터 재최적화 워크포워드(`/api/backtests/walk-forward`는 게이트와 연결되지 않음), 국면별 판정,
   비용·배당을 반영한 벤치마크. 벤치마크는 비용을 내지 않으므로 초과수익은 전략에 불리하게 계산됩니다.
 
-## 공통 검사: data_eligibility (2026-10-26 추가, `eligibility-v1`)
+## 공통 검사: data_eligibility (2026-10-26 추가, PR #6. 현재 적격성 규칙 `eligibility-v3`)
 
 - 두 게이트 모두 `app/research/eligibility.py`의 `gate_check`로 같은 방식으로 판정합니다.
 - 실행 시점에 기록된 적격성 상태를 그대로 씁니다: PASS→PASS, WATCH→WATCH, FAIL→FAIL, INSUFFICIENT_DATA→INSUFFICIENT_DATA.

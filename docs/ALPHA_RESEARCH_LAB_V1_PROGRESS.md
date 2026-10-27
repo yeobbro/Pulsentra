@@ -1,7 +1,19 @@
 # Pulsentra Alpha Research Lab v1 — 진행 보고서
 
-- 작성: 2026-10-25 · 브랜치 `feat/alpha-research-lab-v1` (기준 `research/v0.4-data-audit` `32fe29f`)
-- 이 브랜치의 변경은 **커밋하지 않은 로컬 변경**입니다(커밋·푸시·PR 없음). 아래 "코드" 경로는 작업 트리 기준입니다.
+- 작성: 2026-10-25 · 갱신: 2026-10-26 (기준 브랜치 `research/v0.4-data-audit`, 커밋 `654f277`)
+- 이 문서의 변경은 모두 `research/v0.4-data-audit`에 **병합됐습니다**. `main`(`a57dcc1`)에는 병합되지 않았습니다. 아래 "코드" 경로는 `654f277` 기준입니다.
+- 병합은 코드와 자동 테스트가 들어갔다는 뜻입니다. 실제 데이터 검증이 끝났다는 뜻이 아닙니다(실행 범위는 항목마다 따로 적음).
+
+| PR | 내용 | 작업 브랜치 커밋 | 병합 커밋 |
+|---|---|---|---|
+| #4 | Phase 0 문서 정합 | `b6b7c59` | `32fe29f` |
+| #5 | Ledger · Factor Lab · Robustness Gate · Strategy Library(게이트 어댑터 포함) | `bc10333` | `e4912a3` |
+| #6 | 연구 데이터 적격성(`eligibility-v1`) | `70ba57b` | `f927820` |
+| #7 | 가격 교차 검증 증거(`price-evidence-v2`)·적격성 `eligibility-v3` | `0013920` | `03c4463` |
+| #8 | manifest의 미커밋 파일 경로 파싱 수정 | `157cebb` | `654f277` |
+
+- 아래 절에 남은 작업 브랜치 이름과 그 시점의 테스트 수는 **당시 기록**입니다. 현재 기준 결과는 9절 첫 행에 있습니다.
+- `price-evidence-v1`과 `eligibility-v2`는 PR #7 작업 중 단계로, 별도로 커밋되지 않았습니다. 병합된 코드에는 `price-evidence-v2`와 `eligibility-v3`만 있습니다.
 - 상태 표기: ✅ 완료 · 🟡 부분 · ⬜ 미완료 · ❔ 검증 불가
 - 현재까지 시장 대비 지속 가능한 우위(Alpha)를 입증한 전략·요인은 **없습니다.** 이 문서의 어떤 결과도 투자 권유가 아닙니다.
 
@@ -56,6 +68,7 @@
 | review 2,225종목(79%)의 발견 사항 검토 | ⬜ |
 | 기업행동 후보 8,073건 중 공시 대조 | 🟡 1건(삼성전자 50:1 분할) |
 | 2026-10-22·23 KRX·네이버 일봉 차이 원인(10-23 정확 일치 51/803) | ⬜ 원인 미확정, 네이버 재수집 보류 |
+| 2025-02-27·06-12의 같은 배율 차이 217행(`unverified_adjustments`) | ⬜ 기업행동 공시로 확인하지 않음. 수정주가 차이로 확정하지 않음 |
 | 배당·총수익, 연도별 세율, 상장폐지 목록 참조 대조 | ⬜ |
 | `validity.py`의 `corporate_action_disclosure_match` 설명 문구("never run on live data")가 1건 실행 이후 낡음 | ⬜ 후속 수정 대상(코드 미변경) |
 
@@ -68,8 +81,15 @@
 ## 7. 재현성 한계
 
 - 테스트·스모크 실행은 Mac 사용자 폴더를 마운트한 Linux VM(Python 3.10, pandas 2.3.3, numpy 2.2.6)에서 했습니다. 잠금 파일은 numpy 2.5.4, CI는 Python 3.12·3.13입니다.
-- 이 브랜치의 코드는 커밋 전이므로 스모크 실행 manifest는 `reproducible_from_commit: false`입니다.
-- VM에는 GitHub 인증정보가 없어 원격 상태는 마지막 fetch 기준입니다.
+- 2026-10-25 스모크 실행은 커밋 전 코드로 했으므로 그 manifest는 `reproducible_from_commit: false`입니다. 병합 후 같은 스모크를 다시 실행하지 않았습니다.
+- 가격 증거 v2 산출물(`price_evidence_20261026T062502Z`)도 병합 전 작업 트리 코드로 만들어 `reproducible_from_commit: false`입니다. 병합 코드(`03c4463`)로 VM 임시 폴더에 다시 생성해 보니 `crosscheck_status.json`(생성 시각·도구 정보 제외), 날짜별 `comparison_detail.csv` 4개, 원본 파일 해시 목록이 일치했습니다(2026-10-26). 원본 산출물은 수정하지 않았고 재생성 결과도 저장소에 추가하지 않았습니다.
+- manifest의 `uncommitted_code_files` 첫 항목 첫 글자가 잘리던 문제(예: `pp/factorlab/__main__.py`)는 **PR #8로 수정되어 `research/v0.4-data-audit`에 병합됐습니다**(작업 커밋 `157cebb`, 병합 `654f277`).
+  - 원인: `app/research/manifest.py`의 `_git`이 `git status --porcelain` 출력 전체의 앞 공백을 지운 뒤 각 줄을 `line[3:]`로 잘랐습니다. 작업 트리에서만 수정된 파일은 상태 코드가 공백으로 시작하므로(` M app/...`), 첫 줄만 한 글자가 더 잘렸습니다.
+  - 수정: 상태 조회는 `git status --porcelain -z` 출력을 공백 제거 없이 받아 `_porcelain_paths`에서 상태 코드(앞 2글자)와 경로를 나눕니다. 공백이 있는 경로는 따옴표 없이, rename/copy는 새 경로만 기록합니다(수정 전에는 따옴표가 붙거나 `old -> new` 문자열 그대로 기록됨).
+  - 회귀 테스트: `tests/test_manifest_git.py` 4개. 임시 폴더에 실제 Git 저장소를 만들어 확인합니다(수정 전 3개 실패, 수정 후 4개 통과).
+  - manifest 필드와 `reproducible_from_commit` 판정은 바뀌지 않았습니다. 바뀐 것은 목록의 경로 문자열뿐입니다.
+  - **한계:** 수정 전에 만든 산출물 manifest는 소급 수정하지 않았습니다. 예를 들어 `price_evidence_20261026T062502Z`에는 `pp/factorlab/__main__.py`가 그대로 남아 있습니다.
+- VM에는 GitHub 인증정보가 없어 원격 상태는 마지막 fetch(2026-10-26 08:06 UTC) 기준입니다.
 
 ## 8. 이번 작업에서 구현한 것
 
@@ -134,7 +154,7 @@ JSONL을 고른 이유: 기록이 적고 드물며, 사람이 읽고 diff할 수
 
 PBO, Deflated Sharpe Ratio, Reality Check/SPA, 국면별 판정은 **구현하지 않았고** 값을 만들지 않습니다(gate.json `not_implemented`).
 
-### 추가 — Strategy Library 🟡 (MVP, 미커밋)
+### 추가 — Strategy Library 🟡 (MVP, PR #5 병합)
 
 자세한 내용: [`docs/STRATEGY_LIBRARY.md`](STRATEGY_LIBRARY.md).
 
@@ -154,7 +174,7 @@ PBO, Deflated Sharpe Ratio, Reality Check/SPA, 국면별 판정은 **구현하�
 
 화면 확인: 클라우드 작업공간에 앱 코드를 복사해 DEMO 데이터로 실행하고 Chromium(Playwright)으로 목록·실행·PLANNED 상세·비교·검색·Strategy Lab 연결을 눌러 봤습니다. 콘솔 오류 0건.
 
-### 추가 — Strategy Library × Robustness Gate 🟡 (2026-10-26, 미커밋)
+### 추가 — Strategy Library × Robustness Gate 🟡 (2026-10-26, PR #5 병합)
 
 | 항목 | 상태 | 근거 |
 |---|---|---|
@@ -173,38 +193,38 @@ PBO, Deflated Sharpe Ratio, Reality Check/SPA, 국면별 판정은 **구현하�
 화면 확인: 클라우드 작업공간의 앱 사본(같은 파일)을 DEMO로 띄워 실행 → 게이트 평가, 저장 실행 표에서 평가, 서버 오류(500) 표시를 확인. 콘솔 오류 0건.
 작업 중 사용자 컴퓨터 연결이 한 번 끊겨, 변경은 클라우드 사본에서 마무리한 뒤 해시로 원본이 바뀌지 않았음을 확인하고 반영했습니다.
 
-### 추가 — 연구 데이터 적격성·감사 출처 🟡 (2026-10-26, `feat/research-data-eligibility`, 미커밋)
+### 추가 — 연구 데이터 적격성·감사 출처 🟡 (2026-10-26, PR #6 병합 `f927820`, 작업 브랜치 `feat/research-data-eligibility`)
 
 자세한 규칙: [`DATA_ELIGIBILITY.md`](DATA_ELIGIBILITY.md).
 
 | 항목 | 상태 | 근거 |
 |---|---|---|
-| 적격성 모델·판정(`eligibility-v1`, 상태 4종, 감사 산출물 해시 확인, 지문 대조, 범위·신선도, ok/review/exclude, 출처 기록·독립 대조 분리) | ✅ | `app/research/eligibility.py` · `tests/test_data_eligibility.py` 16개 |
+| 적격성 모델·판정(`eligibility-v1`로 도입, 현재 `eligibility-v3`, 상태 4종, 감사 산출물 해시 확인, 지문 대조, 범위·신선도, ok/review/exclude, 출처 기록·독립 대조 분리) | ✅ | `app/research/eligibility.py` · `tests/test_data_eligibility.py` 16개 |
 | Factor Lab 실행 기록(`data_eligibility`), `--crosscheck` 입력, REPORT 표시 | ✅ | `app/factorlab/__main__.py` · `test_factorlab_run_records_eligibility` |
 | Strategy Library 실행 기록 | ✅ | `app/strategy_library.py` · `test_strategy_library_run_records_eligibility` |
 | 원장 manifest facts에 적격성 요약 | ✅ | `app/research/ledger.py` · `test_ledger_and_manifest_preserved` |
 | 두 게이트 공통 검사 | ✅ | `robustness.py`, `robustness_strategy.py` · `test_both_gates_read_the_record_the_same_way` |
-| 실제 데이터 판정(백테스트 없이 판정만) | ✅ | 지문 일치 `1ea20b72f9562ede`. 감사 미적용 시 UNUSABLE, 감사 적용 조건이면 REVIEW_REQUIRED |
+| 실제 데이터 판정(백테스트 없이 판정만) | ✅ | 지문 일치 `1ea20b72f9562ede`. 감사 미적용 시 UNUSABLE, 감사 적용 조건이면 REVIEW_REQUIRED(가격 증거 없이). 가격 증거를 연결한 결과는 아래 가격 교차 검증 절 |
 | `app.research` 전략 연구 파이프라인 연결 | ⬜ | 후속 과제 |
 | 앱 DB 데이터의 수집 기록·감사 연결 | ⬜ | 그래서 Strategy Library 실행은 실제 데이터여도 INSUFFICIENT |
 
 후속 과제와 우선순위(데이터 적격성에 직접 영향을 주는 순):
 1. **P1** — review 종목 2,225개 검토와 기업행동 후보 8,073건 공시 대조. 끝나기 전에는 실제 데이터가 REVIEW_REQUIRED를 벗어날 수 없음.
-2. **P1** — 독립 출처 가격 대조(KIS·KRX) 결과를 `crosscheck_status.json`의 `cross_source_price_check`로 남기는 실행. 지금은 대조가 없어 source_verification이 WATCH.
+2. **P1** — 독립 출처 가격 대조(KIS·KRX)를 연구 기간 전체로 넓히기. 지금은 KOSPI 4개 거래일 증거만 있어(PR #7) `cross_source_price_check`는 false이고, 증거를 연결하면 10-22·23을 포함한 실행은 source_verification FAIL(전체 판정 UNUSABLE)이고, 2026-10-21까지만 쓰는 실행은 source_verification WATCH입니다(이 구간의 실제 전체 판정은 감사 기간과 달라 지문을 확인할 수 없어 INSUFFICIENT_EVIDENCE).
 3. **P2** — 배당·총수익, 거래량 수정, 연도별 세율. 적격성에서는 known_limitations로만 표시.
 4. **P2** — Strategy Library 게이트의 "시도한 설정 수"와 "주변 파라미터"가 최근 실행 200개만 봄(`strategy_library.py` `evidence_for_run`). 실행이 많아지면 선택 편향 경고가 약해짐.
 5. **P2** — Factor Lab 게이트와 Strategy Library 게이트의 검사 기준 차이(Rank IC t값 vs 거래 기대수익 구간). 같은 척도로 비교하지 않는다는 점만 문서화.
 6. **P3** — PBO·Deflated Sharpe 미구현. 실험 수 기록만 있음.
 
-### 추가 — 가격 교차 검증 증거 🟡 (2026-10-26, `feat/cross-source-price-evidence`, 미커밋)
+### 추가 — 가격 교차 검증 증거 🟡 (2026-10-26, PR #7 병합 `03c4463`, 작업 브랜치 `feat/cross-source-price-evidence`)
 
 | 항목 | 상태 | 근거 |
 |---|---|---|
 | 증거 생성기(저장된 KRX 응답만, 날짜·필드별 일치율과 분모, 매핑·한쪽 출처 종목, 불일치 분류, 원본 해시) | ✅ | `app/krxcheck/evidence.py`, `app/research/price_evidence.py` · `tests/test_price_evidence.py` 18개 |
-| 적격성 v2(증거 손상·원본 변경·미해결 불일치 → FAIL, 일부 날짜만 → WATCH) | ✅ | `app/research/eligibility.py` |
+| 증거 손상·원본 변경·미해결 불일치 → FAIL, 일부 날짜만 → WATCH (작업 중 `eligibility-v2`로 만든 규칙, v3에 그대로 포함) | ✅ | `app/research/eligibility.py` |
 | 가격 증거 v2(날짜 상태 3종, 확인되지 않은 조정 행 별도 집계·근접 1배율 하위 집계, 미검증 행이 있으면 통과 아님)와 적격성 v3(미검증 행 → 최소 WATCH, 실제 수로 설명) | ✅ | `price-evidence-v2` · `eligibility-v3`. v1 산출물 보존 |
 | Factor Lab `--crosscheck`로 증거 연결 | ✅ | `test_factorlab_reads_price_evidence` |
-| 실제 4개 거래일 비교·재현 | ✅ | v2: 2025년 2일 `PASSED_WITH_UNVERIFIED_ADJUSTMENTS`(114·103행), 2026-10-22·23 `FAILED`(711·675행). 기존 비교 결과와 같음 |
+| 실제 4개 거래일 비교·재현(실행 완료, 로컬 산출물 Git 제외) | ✅ | v2: 2025년 2일 `PASSED_WITH_UNVERIFIED_ADJUSTMENTS`(114·103행), 2026-10-22·23 `FAILED`(711·675행). 기존 비교 결과와 같음 |
 | 2025년 조정 가능 행의 원인(기업행동 공시 대조) | ⬜ | 미확인. 이번 작업 범위 밖 |
 | 2026-10-22·23 불일치 원인 | ⬜ | 미확정. 수집 시각은 장 마감 후 |
 | 연구 기간 전체의 출처 검증 | ⬜ | 4개 거래일·KOSPI만 있음. 추가 KRX 응답 수집은 사용자 승인 필요 |
@@ -213,12 +233,14 @@ PBO, Deflated Sharpe Ratio, Reality Check/SPA, 국면별 판정은 **구현하�
 
 | 명령 (Linux VM, Python 3.10, `$HOME/venv`) | 결과 |
 |---|---|
+| **현재 기준 — PR #8 병합 후 `654f277` 코드(문서 브랜치 `docs/reconcile-research-status`), 엄격 모드 `-W error::DeprecationWarning`, 2026-10-26** | **427 passed, 2 skipped, 1 warning** (`tests/test_manifest_git.py` 4개 포함) |
+| PR #7 병합 후 `03c4463`(작업 트리 변경 없음), 엄격 모드, 2026-10-26 | 423 passed, 2 skipped, 1 warning |
 | 기준선(변경 전, `32fe29f`): `python -m pytest -q -p no:cacheprovider` | 272 passed, 2 skipped, 1 warning |
 | 변경 후 전체: 같은 명령 | **339 passed, 2 skipped, 1 warning** (기존 272 그대로 + 신규 67) |
 | 변경 후 전체, CI 엄격 모드 `-W error::DeprecationWarning` | 339 passed, 2 skipped, 1 warning |
-| 가격 증거 v2·적격성 v3 후 전체(엄격 모드, 2026-10-26, `feat/cross-source-price-evidence`) | **423 passed, 2 skipped, 1 warning** (가격 증거 테스트 13 → 18, 조정 행 테스트 1개는 새 상태 계약으로 강화) |
-| 가격 교차 검증 증거 추가 후 전체(엄격 모드, 2026-10-26, `feat/cross-source-price-evidence`) | **418 passed, 2 skipped, 1 warning** (신규 13. 클라우드 Python 3.14.6 + 잠금 의존성에서도 같은 결과) |
-| 데이터 적격성 추가 후 전체(엄격 모드, 2026-10-26, `feat/research-data-eligibility`) | **405 passed, 2 skipped, 1 warning** (신규 16, 기존 단언 변경 없음, 게이트 픽스처 2곳에 적격성 기록 추가) |
+| (당시) 가격 증거 v2·적격성 v3 후 전체(엄격 모드, 2026-10-26, `feat/cross-source-price-evidence` 작업 트리) | **423 passed, 2 skipped, 1 warning** (가격 증거 테스트 13 → 18, 조정 행 테스트 1개는 새 상태 계약으로 강화) |
+| (당시) 가격 증거 v1 단계 전체(엄격 모드, 2026-10-26, `feat/cross-source-price-evidence` 작업 트리, 커밋되지 않은 중간 단계) | **418 passed, 2 skipped, 1 warning** (신규 13. 클라우드 Python 3.14.6 + 잠금 의존성에서도 같은 결과) |
+| (당시) 데이터 적격성 추가 후 전체(엄격 모드, 2026-10-26, `feat/research-data-eligibility` 작업 트리) | **405 passed, 2 skipped, 1 warning** (신규 16, 기존 단언 변경 없음, 게이트 픽스처 2곳에 적격성 기록 추가) |
 | 날짜 계산 3곳 수정 후 전체(엄격 모드, 2026-10-26) | **389 passed, 2 skipped, 1 warning** |
 | Strategy Library 게이트 연결 후 전체(엄격 모드, 2026-10-26) | **389 passed, 2 skipped, 1 warning** (신규 `tests/test_strategy_gate.py` 19, 기존 기대값 변경 없음, 경고는 기존 Starlette 1건) |
 | Strategy Library 추가 후 전체(엄격 모드) | **370 passed, 2 skipped, 1 warning** (신규 `tests/test_strategy_library.py` 30 + 저장소 규칙 1, 기존 기대값 변경 없음) |
@@ -229,10 +251,11 @@ PBO, Deflated Sharpe Ratio, Reality Check/SPA, 국면별 판정은 **구현하�
 
 | 다른 환경 (2026-10-26) | 결과 |
 |---|---|
+| 병합 후 다시 실행한 환경 | `03c4463`: Linux VM(Python 3.10.12)만. PR #8: Linux VM과 Mac(아래 사용자 보고). 클라우드 Python 3.14.6·CI에서는 병합 후 실행하지 않음 |
 | 클라우드 Linux, Python 3.14.6 + `requirements-lock.txt`(numpy 2.5.4 · pandas 2.3.3 · fastapi 0.161.1 · starlette 1.9.0, Mac `.venv`와 같은 버전), 엄격 모드 | 수정 전 **34 failed**, 332 passed, 25 skipped — 원인: numpy 2.5에서 `pd.Timedelta(days=N)`과 해상도가 다른 datetime 열의 concat이 DeprecationWarning |
 | 같은 환경, 날짜 계산 3곳 수정 후(`app/strategy_library.py` 1줄, `tests/test_robustness.py` 1줄, `tests/test_factorlab.py` 2줄, 기대값 변경 없음) | **389 passed, 2 skipped, 1 warning**(같은 파일로 만든 임시 git 저장소). `.git` 없는 사본에서는 366 passed, 25 skipped(저장소 규칙 테스트 23개가 "not a git checkout"으로 skip) |
-| Mac 본체(`.venv`, Python 3.14.6) | ❔ 미검증 — 작업 환경에서 Mac 터미널에 명령을 입력할 수 없음 |
-| CI(GitHub Actions, Python 3.12·3.13 잠금 의존성) | ❔ 미검증 — 커밋 전 |
+| Mac 본체(`.venv`, Python 3.14.6) | PR #8: 회귀 테스트 4 passed, 전체 427 passed, 2 skipped (사용자 보고. 이 작업 환경에서는 Mac 터미널에 명령을 입력할 수 없어 직접 확인하지 않음) |
+| CI(GitHub Actions, Python 3.12·3.13 잠금 의존성) | ❔ 미확인 — 커밋·병합은 됐고 워크플로(`.github/workflows/tests.yml`)는 push·pull_request마다 실행되지만, 이 환경에서 Actions 결과를 조회하지 않음 |
 
 ## 10. 실제 데이터 스모크 실행 (범위 제한, 결과 해석 금지)
 
@@ -255,17 +278,19 @@ PBO, Deflated Sharpe Ratio, Reality Check/SPA, 국면별 판정은 **구현하�
 | 단계 | 상태 |
 |---|---|
 | Phase 0 — Research Integrity & Documentation Reconciliation | ✅ (`32fe29f`) |
-| Phase 1 — Experiment Ledger | ✅ MVP (미커밋) |
-| Phase 2 — Factor Lab | ✅ MVP (미커밋). 전체 기간 실제 데이터 실행은 하지 않음 |
-| Phase 3 — Robustness Gate | ✅ MVP (미커밋). PBO·DSR 미구현 |
-| 추가 — Strategy Library | ✅ MVP (미커밋) |
-| 추가 — Strategy Library × Robustness Gate | 🟡 연결됨(별도 어댑터). 앱 DB 실행의 감사·결과 상태 미연결, 실제 데이터 실행 없음 |
+| Phase 1 — Experiment Ledger | ✅ MVP (PR #5 병합). 실제 실험 등록 없음 |
+| Phase 2 — Factor Lab | ✅ MVP (PR #5 병합). 전체 기간 실제 데이터 실행은 하지 않음 |
+| Phase 3 — Robustness Gate | ✅ MVP (PR #5 병합). PBO·DSR 미구현 |
+| 추가 — Strategy Library | ✅ MVP (PR #5 병합). 실제 데이터 실행 없음 |
+| 추가 — Strategy Library × Robustness Gate | 🟡 연결됨(별도 어댑터, PR #5 병합). 앱 DB 실행의 감사·결과 상태 미연결, 실제 데이터 실행 없음 |
+| 추가 — 연구 데이터 적격성 | 🟡 PR #6 병합(v1), 현재 `eligibility-v3`(PR #7). 실제 데이터는 판정만 실행 |
+| 추가 — 가격 교차 검증 증거 | 🟡 PR #7 병합(`price-evidence-v2`). KOSPI 4개 거래일만 실행, 기간 전체 검증 없음 |
 | Phase 4 — Edge Decay Monitor | ⬜ |
 | Phase 5 — Evidence-based Research Copilot | ⬜ |
 
 ## 12. 다음 단계와 차단 요인
 
-1. 이 브랜치 리뷰 후 커밋(사용자 승인 필요). Mac·CI에서 테스트 재실행.
+1. 커밋·병합은 끝났습니다(PR #4~#8, `research/v0.4-data-audit`). 남은 것: CI 결과 확인, `main` 병합 여부 결정(사용자 결정). Mac 테스트는 PR #8 기준으로 사용자가 보고했습니다.
 2. 실제 실험을 원장에 사전 등록한 뒤(`python -m app.ledger template`), 전체 기간 Factor Lab 실행(사용자 승인 필요, 약 2~4분 예상 ❔).
 3. 감사 review 2,225종목 검토와 기업행동 후보 대조 — 끝나기 전에는 실제 데이터 판정이 PASS가 될 수 없음(PROVISIONAL).
 4. PBO(CSCV)·Deflated Sharpe 구현, 다중 실험 보정.

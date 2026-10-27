@@ -1,8 +1,8 @@
 # Implementation Roadmap (Pulsentra)
 
-✅ 구현·테스트됨 · 🟡 일부 · ⬜ 미구현. "구현"은 코드와 자동 테스트가 있다는 뜻이며, 실데이터로 성능을 검증했다는 뜻이 아닙니다. "실행"은 실제 데이터·API로 돌려 로컬 산출물이 있다는 뜻입니다(갱신 2026-10-25).
+✅ 구현·테스트됨 · 🟡 일부 · ⬜ 미구현. "구현"은 코드와 자동 테스트가 있다는 뜻이며, 실데이터로 성능을 검증했다는 뜻이 아닙니다. "실행"은 실제 데이터·API로 돌려 로컬 산출물이 있다는 뜻입니다. "병합"은 `research/v0.4-data-audit` 브랜치에 PR이 병합됐다는 뜻이며, `main`(`a57dcc1`)에는 아직 병합되지 않았습니다(갱신 2026-10-26, 기준 커밋 `654f277`).
 
-## 다음 목표 — Pulsentra Alpha Research Lab v1 (Phase 1~3 MVP 구현, 미커밋)
+## 다음 목표 — Pulsentra Alpha Research Lab v1 (Phase 1~3 MVP 구현, `research/v0.4-data-audit`에 병합)
 
 - **목표 사용자:** 퀀트·시스템 트레이더
 - **핵심 가치:** 시장 대비 지속 가능한 투자 우위(Alpha)를 탐색하면서, 과적합과 데이터 오류를 통제한다.
@@ -11,15 +11,15 @@
 | 단계 | 내용 | 상태 |
 |---|---|---|
 | Phase 0 — Research Integrity & Documentation Reconciliation | 구현·실행·미검증 범위를 문서 전체에서 일치시킴 | ✅ `32fe29f` (PR #4) |
-| Phase 1 — Experiment Ledger | 실험마다 가설, 데이터 지문, 코드 커밋, 설정, 실험 수, 결과, 채택·기각 사유를 기록. 기존 `run_manifest.json`·재현성 도구(`app/research/manifest.py`) 활용 | 🟡 MVP: `app/research/ledger.py`, `python -m app.ledger` (append-only JSONL·해시 체인·사전 등록·버전·결정), 미커밋 |
-| Phase 2 — Factor Lab | 모멘텀·반전·거래량·변동성·유동성 요인의 사전 정의된 연구 공간. 요인별 성과, IC/Rank IC, 분위별 수익률, 회전율, 비용, 벤치마크 비교. 같은 데이터 범위와 시점 규칙으로 공정 비교 | 🟡 MVP: `app/research/factors.py`, `python -m app.factorlab` (요인 8개). 전체 기간 실제 데이터 실행 전, 배당·대차비용 미반영, 미커밋 |
-| Phase 3 — Robustness Gate | 워크포워드·표본 외 검증, 다중 실험의 선택 편향 통제, 비용·슬리피지 스트레스, 파라미터 안정성, 시장 국면별 성과, 데이터 감사 상태에 따른 검증 제한 | 🟡 MVP: `app/research/robustness.py`, `python -m app.robustness` (`docs/ROBUSTNESS_GATE.md`). PBO·DSR·국면별 판정 미구현, 미커밋 |
-| 추가 — 연구 데이터 적격성·감사 출처 | 실행마다 데이터 출처·감사 지문·제외/검토 종목·감사 범위를 판정해 기록(`eligibility-v1`), 두 게이트 공통 검사 | 🟡 구현(미커밋, `docs/DATA_ELIGIBILITY.md`). 실제 데이터는 REVIEW_REQUIRED(감사 적용 시) |
-| 추가 — 가격 교차 검증 증거 | 저장된 KRX 응답과 로컬 일봉 대조 결과를 적격성 증거로 기록(`price-evidence-v2`, 적격성 v3) | 🟡 구현(미커밋). 통과 0일 · 미검증 조정 포함 2일(2025년, 217행) · 실패 2일(2026-10-22·23 미해결 불일치) → 해당 날짜를 포함한 실행은 UNUSABLE |
+| Phase 1 — Experiment Ledger | 실험마다 가설, 데이터 지문, 코드 커밋, 설정, 실험 수, 결과, 채택·기각 사유를 기록. 기존 `run_manifest.json`·재현성 도구(`app/research/manifest.py`) 활용 | 🟡 MVP: `app/research/ledger.py`, `python -m app.ledger` (append-only JSONL·해시 체인·사전 등록·버전·결정). PR #5 병합(`e4912a3`). 실제 실험 등록 없음 |
+| Phase 2 — Factor Lab | 모멘텀·반전·거래량·변동성·유동성 요인의 사전 정의된 연구 공간. 요인별 성과, IC/Rank IC, 분위별 수익률, 회전율, 비용, 벤치마크 비교. 같은 데이터 범위와 시점 규칙으로 공정 비교 | 🟡 MVP: `app/research/factors.py`, `python -m app.factorlab` (요인 8개). PR #5 병합(`e4912a3`). 전체 기간 실제 데이터 실행 전, 배당·대차비용 미반영 |
+| Phase 3 — Robustness Gate | 워크포워드·표본 외 검증, 다중 실험의 선택 편향 통제, 비용·슬리피지 스트레스, 파라미터 안정성, 시장 국면별 성과, 데이터 감사 상태에 따른 검증 제한 | 🟡 MVP: `app/research/robustness.py`, `python -m app.robustness` (`docs/ROBUSTNESS_GATE.md`). PR #5 병합(`e4912a3`). PBO·DSR·국면별 판정 미구현 |
+| 추가 — 연구 데이터 적격성·감사 출처 | 실행마다 데이터 출처·감사 지문·제외/검토 종목·감사 범위를 판정해 기록(`eligibility-v1`로 도입, 현재 `eligibility-v3`), 두 게이트 공통 검사 | 🟡 구현, PR #6 병합(`f927820`), v3 규칙은 PR #7(`03c4463`). `docs/DATA_ELIGIBILITY.md`. 실제 데이터 적격성 판정만 실행(백테스트 아님): 감사 적용 시 `REVIEW_REQUIRED`. 2026-10-23까지 포함한 데이터 구간에 현재 가격 증거를 연결하면, 2026-10-22·23의 미해결 가격 불일치 1,386행으로 `UNUSABLE` 판정 |
+| 추가 — 가격 교차 검증 증거 | 저장된 KRX 응답과 로컬 일봉 대조 결과를 적격성 증거로 기록(`price-evidence-v2`, 적격성 v3) | 🟡 구현, PR #7 병합(`03c4463`). KOSPI 4개 거래일만 실행(로컬 산출물, Git 제외): 통과 0일 · 미검증 조정 포함 2일(2025년, 217행) · 실패 2일(2026-10-22·23 미해결 불일치) → 해당 날짜를 포함한 실행은 UNUSABLE |
 | Phase 4 — Edge Decay Monitor | 검증 후보와 모의투자 관측 성과의 차이 추적. 표본 수와 통계적 불확실성을 고려한 성능 변화 경고 | ⬜ |
 | Phase 5 — Evidence-based Research Copilot | 실제 계산 결과와 문서에 근거해 분석을 설명하고 다음 실험을 제안. 근거 없는 결과는 만들지 않음 | ⬜ |
 
-| 추가 — Strategy Library | 대표 전략 템플릿 카탈로그, Strategy Lab 엔진 연결, 같은 조건 비교, Ledger 사전 등록, 저장 실행의 Robustness Gate 평가(별도 어댑터) | 🟡 MVP: AVAILABLE 13 · LIMITED 2 · PLANNED 3 (`docs/STRATEGY_LIBRARY.md`). 게이트 연결됨, 단 앱 DB 실행은 감사·결과 상태 미연결로 PASS 불가, 실제 데이터 실행 없음, 미커밋 |
+| 추가 — Strategy Library | 대표 전략 템플릿 카탈로그, Strategy Lab 엔진 연결, 같은 조건 비교, Ledger 사전 등록, 저장 실행의 Robustness Gate 평가(별도 어댑터) | 🟡 MVP: AVAILABLE 13 · LIMITED 2 · PLANNED 3 (`docs/STRATEGY_LIBRARY.md`). PR #5 병합(`e4912a3`). 게이트 연결됨, 단 앱 DB 실행은 감사·결과 상태 미연결로 PASS 불가, 실제 데이터 실행 없음 |
 
 진행 보고서: [`docs/ALPHA_RESEARCH_LAB_V1_PROGRESS.md`](ALPHA_RESEARCH_LAB_V1_PROGRESS.md)
 
