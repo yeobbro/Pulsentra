@@ -1,0 +1,38 @@
+# Render Blueprint for a private, single-user Pulsentra web app.
+# Spec: https://render.com/docs/blueprint-spec · Disks: https://render.com/docs/disks · Guide: docs/DEPLOY_RENDER.md
+# Creating a service from this file is done by the user in the Render Dashboard (paid plan + persistent disk).
+services:
+  - type: web
+    name: pulsentra-web
+    runtime: python
+    branch: research/v0.4-data-audit
+    region: singapore
+    plan: 0.5c-512mb            # paid instance; Free instances cannot attach a persistent disk
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /healthz
+    autoDeployTrigger: checksPass   # deploy a new commit only after its GitHub checks (tests workflow) pass
+    disk:
+      name: pulsentra-data
+      mountPath: /var/data      # only files under this path survive deploys and restarts
+      sizeGB: 1                 # can be increased later, never decreased
+    envVars:
+      - key: PULSENTRA_ENV
+        value: production
+      - key: PULSENTRA_DATA_DIR
+        value: /var/data
+      - key: PULSENTRA_DB_PATH
+        value: /var/data/market_signal_lab.sqlite3
+      - key: PULSENTRA_MODEL_DIR
+        value: /var/data/models
+      - key: PULSENTRA_MODEL_PATH
+        value: /var/data/model.joblib
+      - key: PULSENTRA_MODEL_META_PATH
+        value: /var/data/model_meta.json
+      - key: PULSENTRA_AUTOLOAD_DEMO
+        value: "true"
+      # Set in the Render Dashboard only. Never put the values in this file or in Git.
+      - key: PULSENTRA_ACCESS_USERNAME
+        sync: false
+      - key: PULSENTRA_ACCESS_PASSWORD
+        sync: false

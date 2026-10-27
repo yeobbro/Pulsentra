@@ -13,7 +13,7 @@ from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
-from app import alerts, db, paper_trading
+from app import alerts, db, paper_trading, security
 from app.backtest import backtest_symbol
 from app.backtesting.engine import ExitConfig
 from app.backtesting.report import compare_exits, compare_strategies, run_report, signal_study, walk_forward
@@ -28,9 +28,10 @@ from app.providers.dart import DartAPIError, DartClient
 from app.providers.kis import KISClient, KisAPIError
 from app.risk import CostModel, RiskConfig
 from app.scanner import ScanConfig, evidence, run_scan
-from app.services import (adopted_model, json_safe, load_demo, lookups, model_list, run_ml, save_backtest, universe)
-from app.settings import (APP_NAME, APP_NAME_KO, APP_TAGLINE, APP_VERSION, BASE_DIR, DB_PATH, DEFAULT_ROUND_TRIP_COST_BPS,
-                          KIS_PAPER)
+from app.services import (adopted_model, autoload_demo_if_empty, json_safe, load_demo, lookups, model_list, run_ml, save_backtest,
+                          universe)
+from app.settings import (APP_NAME, APP_NAME_KO, APP_TAGLINE, APP_VERSION, AUTOLOAD_DEMO, BASE_DIR, DB_PATH,
+                          DEFAULT_ROUND_TRIP_COST_BPS, KIS_PAPER)
 from app import strategy_library
 from app.research.ledger import LedgerError
 from app.strategies import catalog, get_strategy, list_strategies
@@ -39,10 +40,17 @@ from app.strategies import catalog, get_strategy, list_strategies
 @asynccontextmanager
 async def lifespan(_: FastAPI):
     init_db()
+    if AUTOLOAD_DEMO:
+        autoload_demo_if_empty()
     yield
 
 
+# Access control for hosted use (app/security.py). Fails here, at import/startup, in production without credentials.
+ACCESS = security.AccessConfig.from_env()
+ACCESS.validate()
+
 app = FastAPI(title=APP_NAME, version=APP_VERSION, description=APP_TAGLINE, lifespan=lifespan)
+app.add_middleware(security.AccessGuard, config=ACCESS)
 app.mount("/static", StaticFiles(directory=str(BASE_DIR / "static")), name="static")
 _json_safe = json_safe  # MVP name
 
@@ -221,6 +229,12 @@ def _universe_or_404(market: str, symbols: list[str] | None = None):
 
 
 # ------------------------------------------------------------------ pages & status
+
+@app.get(security.HEALTH_PATH, include_in_schema=False)
+def healthz():
+    """Unauthenticated liveness probe for the host. Returns nothing about data, versions or configuration."""
+    return {"status": "ok"}
+
 
 @app.get("/", response_class=HTMLResponse)
 def home():
