@@ -45,8 +45,9 @@ Every record displayed in the product should carry: provider, source type, fetch
 
 - [x] Apply a presentation-only visual refresh to the existing dashboard stylesheet.
 - [ ] Review the refreshed UI against desktop and mobile screenshots.
+- [x] Add `scripts/refresh_instrument_master.py` to save a normalized CSV plus SHA-256/source/fetched-at manifest; it does not fetch prices or write to the candles table.
 - [ ] Add a dedicated market overview / index-context endpoint backed only by eligible data.
-- [ ] Add instrument master import and provenance tests.
+- [x] Add a provenance-stamped FinanceDataReader KRX instrument-master snapshot command and normalization/provenance tests (reference-only; not approved for redistribution).
 - [ ] Add OpenDART and ECOS data cards after credentials and provider terms are verified.
 - [ ] Reorganize navigation and dashboard information hierarchy without breaking existing tabs.
 - [ ] Add integration tests for source provenance, freshness, and no cross-contamination of DEMO/REAL/TEST.
