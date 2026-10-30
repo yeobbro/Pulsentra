@@ -89,7 +89,9 @@ python --version
 python -c "import pandas, fastapi, FinanceDataReader; print('Pulsentra environment OK')"
 ```
 
-중요: 위 절차는 안내만 된 상태이며, 설치 성공 여부는 확인되지 않았습니다. 설치 실패 시 전체 오류를 확인하고 다음 조치를 결정해야 합니다.
+**2026-10-30 사용자 실행 결과: 성공.** Homebrew로 Python 3.12.16 설치, 저장소 안에 별도 `.venv312` 생성, `requirements-lock.txt` 전체 설치 완료. 마지막 검증에서 `Python 3.12.16` 및 `Pulsentra environment OK` 출력 확인. 따라서 새 환경의 pandas, FastAPI, FinanceDataReader import가 성공했습니다. 기존 `.venv`/Conda 문제는 해결된 것으로 보이며, 기존 환경은 삭제하지 않고 보존합니다. 명령 블록의 주석 줄이 대화형 zsh에서 개별 실행되어 `zsh: command not found: #`가 출력됐지만, 설치와 최종 import 검증은 정상 완료했습니다.
+
+아직 `.venv312`에서 pytest를 실행하지 않았으므로 전체 테스트 결과는 미확인입니다. 다음 단계는 `source .venv312/bin/activate` 후 `python -m pytest -q -W error::DeprecationWarning` 실행입니다.
 
 ## 4. 데이터 소스 및 API 진행 원칙
 
@@ -114,7 +116,7 @@ python -c "import pandas, fastapi, FinanceDataReader; print('Pulsentra environme
 
 ## 6. 다음 작업 순서
 
-1. 사용자 Mac의 새 `.venv312` 설치 결과 확인
+1. **완료:** 사용자 Mac의 새 `.venv312` 설치 및 핵심 패키지 import 검증
 2. 로컬 작업 트리와 Claude Code의 현재 작업 상태를 확인한 뒤, `origin/research/v0.4-data-audit`의 9개 커밋을 `feat/overfitting-pbo-dsr`에 안전하게 통합
    - 작업 트리가 clean인지 확인
    - Claude가 같은 브랜치에서 미커밋 작업 중이면 먼저 커밋/백업 또는 별도 브랜치로 보존
