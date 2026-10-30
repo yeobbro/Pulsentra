@@ -11,8 +11,10 @@ Thresholds are `GateConfig` defaults (documented in docs/ROBUSTNESS_GATE.md). A 
 own `gate` section; thresholds passed at evaluation time that differ from the registered ones make the
 `thresholds` check WATCH, because they were chosen after the spec was fixed.
 
-Not implemented (reported as such, never estimated): Probability of Backtest Overfitting (PBO, CSCV), Deflated
-Sharpe Ratio, White's Reality Check / SPA, regime-conditional checks.
+Selection bias (added 2026-10-30): PBO by CSCV over every factor x leg of the run and the Deflated Sharpe Ratio
+of this factor, both on dev + validation dates only (`app/research/overfitting.py`). The test period is not used.
+
+Not implemented (reported as such, never estimated): White's Reality Check / SPA, regime-conditional checks.
 """
 from __future__ import annotations
 
@@ -25,10 +27,11 @@ import pandas as pd
 
 from app.research.eligibility import gate_check as eligibility_check
 from app.research.manifest import file_sha256
+from app.research.overfitting import deflated_sharpe, pbo_cscv, sharpe
 
 PASS, WATCH, FAIL, INSUFFICIENT = "PASS", "WATCH", "FAIL", "INSUFFICIENT_DATA"
 SEVERITY = {PASS: 0, WATCH: 1, INSUFFICIENT: 2, FAIL: 3}
-NOT_IMPLEMENTED = ["PBO (probability of backtest overfitting)", "Deflated Sharpe Ratio", "White Reality Check / Hansen SPA",
+NOT_IMPLEMENTED = ["White Reality Check / Hansen SPA",
                    "regime-conditional performance", "short-sale borrow costs and restrictions"]
 
 
@@ -45,6 +48,13 @@ class GateConfig:
     walk_forward_fail_below: float = 0.4
     cost_stress_multipliers: tuple[float, ...] = (2.0, 3.0)
     max_audit_review_share: float = 0.5
+    pbo_splits: int = 16                   # CSCV blocks (even); reduced when dev+validation has too few dates
+    pbo_min_trials: int = 4                # factor x leg columns needed to measure selection
+    pbo_min_dates: int = 32                # dev + validation dates shared by all trials (= dev + validation minimums)
+    pbo_watch_above: float = 0.25
+    pbo_fail_at: float = 0.5               # IS winner no better than the OOS median in half the splits
+    dsr_pass_min: float = 0.95
+    dsr_fail_below: float = 0.5
 
     @classmethod
     def from_dict(cls, d: dict | None) -> "GateConfig":
@@ -240,6 +250,8 @@ def evaluate(factorlab_dir: Path, factor: str, gate: GateConfig | None = None, l
         checks.append(_check("parameter_neighbourhood", PASS if not flip else WATCH,
                              "neighbouring windows point the same way" if not flip else f"neighbours with the other sign or no data: {flip}",
                              neighbour_rank_ic_mean_dev_validation=signs))
+    # 8b. selection bias: PBO over all factor x leg trials, DSR of this factor (dev + validation only, never test)
+    checks += selection_checks(by, cfg, buy, sell, f, o, sign, gate, m.get("experiments_total"))
     # 9. benchmark (secondary KOSPI, reported)
     gvo = o[o["period"] == "validation"]
     kos = float((gv[("top" if sign > 0 else "bottom")] - gv["kospi_cc"]).mean()) if len(gv) and gv["kospi_cc"].notna().any() else None
@@ -282,6 +294,74 @@ def evaluate(factorlab_dir: Path, factor: str, gate: GateConfig | None = None, l
             "manifest_sha256": file_sha256(d / "run_manifest.json"), "data_fingerprint": m.get("data_fingerprint"),
             "experiments_total_in_run": m.get("experiments_total"), "ledger_id": ledger_id,
             "note": "PASS means every implemented check passed on this data; it is not proof of a persistent edge."}
+
+
+def trial_matrix(by: pd.DataFrame, factors: list[str], buy: float, sell: float, periods=("dev", "validation")) -> tuple[pd.DataFrame, int]:
+    """Dates x (factor, leg) net excess over the equal-weight universe, long one quantile leg at a time.
+
+    These are the alternatives a researcher picks from in one run: every factor, held long at either end. Dates
+    missing for any trial are dropped (count returned) so every trial is scored on the same dates."""
+    g = by[by["period"].isin(periods)]
+    cols = {}
+    for fac in factors:
+        h = g[g["factor"] == fac].sort_values("date").set_index("date")
+        if h.empty:
+            continue
+        for leg in ("top", "bottom"):
+            cols[f"{fac}:{leg}"] = h[leg] - long_leg_costs(h, leg, buy, sell) - h["ew_universe"]
+    mat = pd.DataFrame(cols).sort_index()
+    before = len(mat)
+    mat = mat.dropna()
+    return mat, before - len(mat)
+
+
+def selection_checks(by, cfg, buy, sell, f, o, sign, gate: GateConfig, experiments_total) -> list[dict]:
+    mat, dropped = trial_matrix(by, list((cfg.get("factors") or {})), buy, sell)
+    out = []
+    if mat.shape[1] < gate.pbo_min_trials:
+        pb = {"pbo": float("nan"), "reason": f"{mat.shape[1]} factor x leg trials ({gate.pbo_min_trials} needed)", "n_trials": mat.shape[1]}
+    elif len(mat) < gate.pbo_min_dates:
+        pb = {"pbo": float("nan"), "reason": f"{len(mat)} shared dev + validation dates ({gate.pbo_min_dates} needed)", "n_obs": len(mat)}
+    else:
+        pb = pbo_cscv(mat, gate.pbo_splits)
+    pbo = pb.get("pbo")
+    if pb.get("reason") or not np.isfinite(pbo):
+        out.append(_check("selection_overfitting", INSUFFICIENT, f"PBO not computed: {pb.get('reason')}", **pb, dates_dropped=dropped))
+    else:
+        st = FAIL if pbo >= gate.pbo_fail_at else (WATCH if pbo > gate.pbo_watch_above else PASS)
+        mine = sum(v for k, v in pb["is_winner_share"].items() if k.split(":")[0] == f["factor"].iloc[0]) if len(f) else 0.0
+        out.append(_check("selection_overfitting", st,
+                          f"PBO {pbo:.0%}: the in-sample best of {pb['n_trials']} factor x leg trials did no better than the "
+                          f"out-of-sample median in {pbo:.0%} of {pb['n_combinations']} CSCV splits (dev + validation only); "
+                          f"this factor was the in-sample best in {mine:.0%} of splits. PBO judges the selection procedure, not this factor alone",
+                          **pb, this_factor_is_winner_share=mine, dates_dropped=dropped))
+    # DSR of this factor in its dev direction, deflated by the number of factors tried and the dispersion of their
+    # Sharpe ratios. Each factor is oriented by its own dev sign (the gate's rule), so the mirror leg of a factor
+    # does not inflate the dispersion; PBO above already charges for choosing the leg.
+    n_trials = max(len(cfg.get("factors") or {}), int(experiments_total or 0))
+    trial_sr = []
+    for fac in (cfg.get("factors") or {}):
+        h = by[(by["factor"] == fac) & by["period"].isin(["dev", "validation"])].sort_values("date")
+        dm = h.loc[h["period"] == "dev", "rank_ic"].mean()
+        if len(h) and np.isfinite(dm) and dm != 0:
+            x = sharpe(oriented(h, int(np.sign(dm)), buy, sell)["excess_net"])
+            if np.isfinite(x):
+                trial_sr.append(x)
+    var = float(np.var(trial_sr, ddof=1)) if len(trial_sr) > 1 else float("nan")
+    series = o[o["period"].isin(["dev", "validation"])]["excess_net"]
+    if not sign:
+        out.append(_check("deflated_sharpe", INSUFFICIENT, "no dev direction, so no selected series to deflate", n_trials=n_trials))
+        return out
+    ds = deflated_sharpe(series, n_trials, var)
+    dsr = ds["dsr"]
+    if ds["reason"] or not np.isfinite(dsr):
+        out.append(_check("deflated_sharpe", INSUFFICIENT, f"DSR not computed: {ds['reason']}", **ds))
+    else:
+        st = PASS if dsr >= gate.dsr_pass_min else (FAIL if dsr < gate.dsr_fail_below else WATCH)
+        out.append(_check("deflated_sharpe", st,
+                          f"DSR {dsr:.2f}: per-period Sharpe {ds['sharpe']:.3f} vs {ds['sr0_expected_max']:.3f} expected from the best of "
+                          f"{n_trials} unskilled trials (net excess over equal weight, dev + validation)", **ds, trial_sharpes=trial_sr))
+    return out
 
 
 def report_md(res: dict) -> str:

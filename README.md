@@ -37,7 +37,7 @@ python -m app.ledger verify --files                          # 원장·연결 �
 ```
 
 - Factor Lab: 모멘텀(20/60/120)·반전·변동성·거래대금·거래대금 비율·비유동성, IC·Rank IC·분위 수익률·회전율·비용 후 동일가중 대비 초과수익. 요인 ≤ t, 진입 t+1 시가, 청산 t+1+h 시가.
-- Robustness Gate: PASS / WATCH / FAIL / INSUFFICIENT_DATA, 기준은 [`docs/ROBUSTNESS_GATE.md`](docs/ROBUSTNESS_GATE.md). PBO·Deflated Sharpe는 미구현.
+- Robustness Gate: PASS / WATCH / FAIL / INSUFFICIENT_DATA, 기준은 [`docs/ROBUSTNESS_GATE.md`](docs/ROBUSTNESS_GATE.md). 선택 편향 검사로 PBO(CSCV)와 Deflated Sharpe Ratio를 포함(Factor Lab 게이트만, 2026-10-30).
   Strategy Library 저장 실행도 별도 어댑터로 평가합니다(`POST /api/library/runs/{id}/robustness`).
 - **연구 데이터 적격성**(PR #6으로 도입, 현재 `eligibility-v3`; 가격 교차 검증 증거 `price-evidence-v2`는 PR #7): Factor Lab·Strategy Library 실행마다 데이터 출처·감사 지문 일치·제외/검토 종목·감사 범위와 신선도를 판정해 USABLE / REVIEW_REQUIRED / UNUSABLE / INSUFFICIENT_EVIDENCE로 기록하고, 두 게이트가 같은 방식으로 읽습니다. 현재 실제 데이터는 (가격 증거 없이) 감사 적용 시 REVIEW_REQUIRED, 미적용 시 UNUSABLE이며, KOSPI 4개 거래일 가격 증거를 연결하면 2026-10-22·23을 포함한 실행은 UNUSABLE입니다. [`docs/DATA_ELIGIBILITY.md`](docs/DATA_ELIGIBILITY.md) 현재 앱 DB 실행은 감사·결과 상태가 연결되지 않아 PASS가 나올 수 없고, DEMO 실행은 FAIL입니다.
 - 실제 데이터는 범위를 제한한 스모크 실행 1회뿐이며(2023년 이후, 판정 INSUFFICIENT_DATA) 연구 결론이 아닙니다.

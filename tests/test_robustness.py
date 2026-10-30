@@ -29,14 +29,16 @@ def _rows(factor, period, start, end, ric, edge, turnover=0.3, n=200):
 
 def make_run(tmp_path, name="fl", ric=(0.05, 0.05, 0.05), edge=(0.01, 0.01, 0.01), turnover=0.3, neighbours=0.05,
              periods=None, factors=None, ends=("2021-11-15", "2023-11-15", "2025-11-15"), validity="VERIFIED",
-             reproducible=True, audit=None, started=None, ledger=None, total=3, embargo=35, eligibility="PASS"):
+             reproducible=True, audit=None, started=None, ledger=None, total=3, embargo=35, eligibility="PASS",
+             neighbour_edge=0.5):
     d = tmp_path / name
     d.mkdir()
     rows = []
     for fac in (factors or FACTORS):
         r = ric if fac == "mom_60" else tuple(neighbours if x > 0 else -neighbours for x in ric) if isinstance(neighbours, float) else neighbours
         for (per, start), end, rr, ee in zip((("dev", "2016-01-04"), ("validation", "2022-01-03"), ("test", "2024-01-02")), ends, r, edge):
-            rows += _rows(fac, per, start, end, rr, ee if fac == "mom_60" else ee, turnover)
+            # neighbours carry half the edge, so mom_60 is the in-sample winner of the run (selection checks)
+            rows += _rows(fac, per, start, end, rr, ee if fac == "mom_60" else ee * neighbour_edge, turnover)
     pd.DataFrame(rows).to_csv(d / "factor_ic_by_date.csv", index=False)
     m = {"manifest_version": 2, "kind": "factorlab", "started_utc": started or pd.Timestamp.now(tz="UTC").isoformat(),
          "git": {"commit": "c" * 40, "reproducible_from_commit": reproducible, "uncommitted_code_files": [] if reproducible else ["app/x.py"]},
@@ -70,7 +72,10 @@ def test_pass_only_when_every_check_passes(tmp_path, registered):
     res = evaluate(d, "mom_60", ledger_state=L.state(), ledger_id="EXP-gate")
     bad = {k: c["status"] for k, c in by_name(res).items() if c["status"] != PASS}
     assert res["status"] == PASS, bad
-    assert res["direction_from_dev"] == 1 and "PBO (probability of backtest overfitting)" in res["not_implemented"]
+    assert res["direction_from_dev"] == 1
+    # PBO and DSR are implemented since 2026-10-30 and must be among the passing checks, not listed as missing
+    assert {"selection_overfitting", "deflated_sharpe"} <= set(by_name(res))
+    assert not any("PBO" in x or "Deflated" in x for x in res["not_implemented"])
 
 
 def test_no_preregistration_is_watch(tmp_path):

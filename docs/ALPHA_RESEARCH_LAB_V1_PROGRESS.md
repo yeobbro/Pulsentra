@@ -152,7 +152,20 @@ JSONL을 고른 이유: 기록이 적고 드물며, 사람이 읽고 diff할 수
 | 결과 후 임계값 변경 | `test_changed_thresholds_are_watch` |
 | CLI·원장 연결 | `test_cli_with_factorlab_output_and_ledger` |
 
-PBO, Deflated Sharpe Ratio, Reality Check/SPA, 국면별 판정은 **구현하지 않았고** 값을 만들지 않습니다(gate.json `not_implemented`).
+Reality Check/SPA, 국면별 판정은 **구현하지 않았고** 값을 만들지 않습니다(gate.json `not_implemented`). PBO·DSR은 2026-10-30에 추가했습니다(아래 "선택 편향 검사").
+
+### 추가 — 선택 편향 검사: PBO·Deflated Sharpe ✅ (2026-10-30, 작업 브랜치 `feat/overfitting-pbo-dsr`, 병합 전)
+
+규칙·수식: [`ROBUSTNESS_GATE.md`](ROBUSTNESS_GATE.md) "선택 편향 검사".
+
+| 항목 | 상태 | 근거 |
+|---|---|---|
+| PBO(CSCV): 블록 분할, 모든 IS/OOS 조합, 로짓, 평균 순위 동률 처리, OOS 손실 확률·성과 저하 기울기 | ✅ | `app/research/overfitting.py` `pbo_cscv` · 순수 잡음 ≈ 0.5, 진짜 우위 < 0.05, IS 승자가 OOS에서 지는 구성 > 0.8 |
+| DSR: 기대 최대 샤프, 비정규성 보정, N = 1이면 PSR과 같음 | ✅ | `deflated_sharpe`, `expected_max_sharpe` · 손 계산 값, 시행 수 증가 시 단조 감소 |
+| 게이트 검사 `selection_overfitting`, `deflated_sharpe`(dev + validation만, test 미사용) | ✅ | `app/research/robustness.py` · `tests/test_overfitting.py` 16개 |
+| 기존 테스트 | ✅ | 픽스처 1곳 변경(이웃 요인 수익 폭을 mom_60의 절반으로, `neighbour_edge` 인자). 단언 1곳은 "PBO가 미구현 목록에 있다"에서 "구현된 검사로 통과한다"로 바뀜 |
+| 실제 데이터 실행 | ⬜ | 전체 기간 Factor Lab 실행이 아직 없음. 기존 스모크 산출물에는 적용해 종합 상태가 INSUFFICIENT_DATA로 그대로임을 확인 |
+| Strategy Library 게이트 연결, 원장 전체 시행 수 반영 | ⬜ | 후속 과제 |
 
 ### 추가 — Strategy Library 🟡 (MVP, PR #5 병합)
 
@@ -214,7 +227,7 @@ PBO, Deflated Sharpe Ratio, Reality Check/SPA, 국면별 판정은 **구현하�
 3. **P2** — 배당·총수익, 거래량 수정, 연도별 세율. 적격성에서는 known_limitations로만 표시.
 4. **P2** — Strategy Library 게이트의 "시도한 설정 수"와 "주변 파라미터"가 최근 실행 200개만 봄(`strategy_library.py` `evidence_for_run`). 실행이 많아지면 선택 편향 경고가 약해짐.
 5. **P2** — Factor Lab 게이트와 Strategy Library 게이트의 검사 기준 차이(Rank IC t값 vs 거래 기대수익 구간). 같은 척도로 비교하지 않는다는 점만 문서화.
-6. **P3** — PBO·Deflated Sharpe 미구현. 실험 수 기록만 있음.
+6. ~~**P3** — PBO·Deflated Sharpe 미구현.~~ Factor Lab 게이트에 구현(2026-10-30, `feat/overfitting-pbo-dsr`). Strategy Library 게이트는 미구현.
 
 ### 추가 — 가격 교차 검증 증거 🟡 (2026-10-26, PR #7 병합 `03c4463`, 작업 브랜치 `feat/cross-source-price-evidence`)
 
@@ -280,7 +293,7 @@ PBO, Deflated Sharpe Ratio, Reality Check/SPA, 국면별 판정은 **구현하�
 | Phase 0 — Research Integrity & Documentation Reconciliation | ✅ (`32fe29f`) |
 | Phase 1 — Experiment Ledger | ✅ MVP (PR #5 병합). 실제 실험 등록 없음 |
 | Phase 2 — Factor Lab | ✅ MVP (PR #5 병합). 전체 기간 실제 데이터 실행은 하지 않음 |
-| Phase 3 — Robustness Gate | ✅ MVP (PR #5 병합). PBO·DSR 미구현 |
+| Phase 3 — Robustness Gate | ✅ MVP (PR #5 병합). PBO·DSR은 Factor Lab 게이트에 추가(`feat/overfitting-pbo-dsr`, 병합 전) |
 | 추가 — Strategy Library | ✅ MVP (PR #5 병합). 실제 데이터 실행 없음 |
 | 추가 — Strategy Library × Robustness Gate | 🟡 연결됨(별도 어댑터, PR #5 병합). 앱 DB 실행의 감사·결과 상태 미연결, 실제 데이터 실행 없음 |
 | 추가 — 연구 데이터 적격성 | 🟡 PR #6 병합(v1), 현재 `eligibility-v3`(PR #7). 실제 데이터는 판정만 실행 |
@@ -293,7 +306,7 @@ PBO, Deflated Sharpe Ratio, Reality Check/SPA, 국면별 판정은 **구현하�
 1. 커밋·병합은 끝났습니다(PR #4~#8, `research/v0.4-data-audit`). 남은 것: CI 결과 확인, `main` 병합 여부 결정(사용자 결정). Mac 테스트는 PR #8 기준으로 사용자가 보고했습니다.
 2. 실제 실험을 원장에 사전 등록한 뒤(`python -m app.ledger template`), 전체 기간 Factor Lab 실행(사용자 승인 필요, 약 2~4분 예상 ❔).
 3. 감사 review 2,225종목 검토와 기업행동 후보 대조 — 끝나기 전에는 실제 데이터 판정이 PASS가 될 수 없음(PROVISIONAL).
-4. PBO(CSCV)·Deflated Sharpe 구현, 다중 실험 보정.
+4. ~~PBO(CSCV)·Deflated Sharpe 구현~~ (Factor Lab 게이트, 2026-10-30). 남은 것: 원장 전체 시행 수를 DSR에 반영, Strategy Library 게이트 연결.
 5. `validity.py` 공시 대조 설명 문구 갱신.
 
 차단 요인: KIS 인증정보 없음, 데이터 이용 권한 미확정, 네이버 재수집 보류, VM에서 GitHub 인증 불가(푸시는 Mac에서).

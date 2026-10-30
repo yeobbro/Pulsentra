@@ -35,6 +35,10 @@ Factor Lab 실행 1건의 한 요인을 고정된 검사로 판정합니다. 파
 | `walk_forward_min_hit` / `walk_forward_fail_below` | 0.6 / 0.4 | walk_forward |
 | `cost_stress_multipliers` | (2.0, 3.0) | cost_stress (첫 배수에서 순초과 ≤ 0이면 FAIL, 이후 배수만이면 WATCH) |
 | `max_audit_review_share` | 0.5 | audit_applied |
+| `pbo_splits` | 16 | selection_overfitting (CSCV 블록 수, 짝수. 날짜가 적으면 블록당 2개 이상이 되도록 줄임, 최소 4) |
+| `pbo_min_trials` / `pbo_min_dates` | 4 / 32 | selection_overfitting (요인×다리 수, 모든 시행에 공통인 dev+validation 날짜 수) |
+| `pbo_watch_above` / `pbo_fail_at` | 0.25 / 0.5 | selection_overfitting |
+| `dsr_pass_min` / `dsr_fail_below` | 0.95 / 0.5 | deflated_sharpe |
 
 사전 등록 명세의 `gate` 항목에 임계값을 적으면 그 값이 기준이 됩니다. 평가 시 `--threshold name=value`로 바꾸면
 결과는 계산하지만 `thresholds` 검사가 WATCH가 됩니다(결과를 보고 기준을 바꾼 것과 구별할 수 없기 때문).
@@ -60,11 +64,32 @@ Factor Lab 실행 1건의 한 요인을 고정된 검사로 판정합니다. 파
 | audit_applied | — | `--audit` 없이 실행, review 종목 비율 > 0.5 |
 | data_validity | INELIGIBLE | PROVISIONAL |
 | reproducibility | 산출물 SHA-256이 manifest와 다름 | 실행 시 커밋되지 않은 코드 |
+| selection_overfitting | PBO ≥ 0.5 → FAIL. 시행 < 4, 공통 날짜 < 32 → INSUFFICIENT | 0.25 < PBO < 0.5 |
+| deflated_sharpe | DSR < 0.5 → FAIL. dev 방향 없음, 변동 없는 수익률, 비정규성 항 ≤ 0 → INSUFFICIENT | 0.5 ≤ DSR < 0.95 |
+
+## 선택 편향 검사 (2026-10-30 추가)
+
+코드 `app/research/overfitting.py`(계산), `app/research/robustness.py` `trial_matrix`·`selection_checks`(게이트 연결), 테스트 `tests/test_overfitting.py`.
+두 검사 모두 **dev + validation 날짜만** 씁니다. test 기간은 읽지 않습니다(`test_selection_checks_never_read_the_test_period`).
+
+**PBO — Probability of Backtest Overfitting (CSCV).** Bailey·Borwein·López de Prado·Zhu(2017).
+- 시행(trial) = 이 Factor Lab 실행의 모든 요인 × 다리(상위 분위 매수, 하위 분위 매수). 값은 날짜별 비용 차감 후 동일가중 대비 초과수익입니다. 연구자가 한 실행에서 고를 수 있었던 대안 전체입니다.
+- 날짜를 시간순 S개 블록으로 나누고, S/2개를 in-sample(IS)로 고르는 모든 조합(S=16이면 12,870개)마다 IS 샤프가 가장 높은 시행을 고릅니다. 그 시행의 out-of-sample(OOS) 순위로 로짓 λ = ln(ω/(1−ω)), ω = 순위/(N+1)을 계산합니다(오름차순, 동률은 평균 순위).
+- PBO = λ ≤ 0인 조합의 비율. "IS 1등이 OOS에서 중앙값보다 낫지 않았던 비율"입니다. 중앙값과 정확히 같은 경우도 과적합으로 셉니다(보수적).
+- PBO는 **고르는 절차**를 판정합니다. 이 요인 하나의 판정이 아닙니다. 그래서 결과에 이 요인이 IS 1등이었던 비율(`this_factor_is_winner_share`)과 시행별 1등 비율, IS 1등의 OOS 손실 확률, IS→OOS 성과 저하 기울기를 함께 남깁니다.
+- 한 시행이라도 값이 없는 날짜는 모든 시행에서 뺍니다(`dates_dropped`).
+
+**DSR — Deflated Sharpe Ratio.** Bailey·López de Prado(2014).
+- 대상: 이 요인을 dev 방향으로 보유했을 때의 날짜별 비용 차감 후 동일가중 대비 초과수익(dev + validation). 샤프·왜도·첨도는 기간당 값이며 연율화하지 않습니다.
+- 시행 수 N = max(이 실행의 요인 수, manifest `experiments_total`). 샤프 분산은 각 요인을 **자기 dev 방향**으로 놓은 시행들의 샤프로 계산합니다. 같은 요인의 반대 다리는 분산을 부풀리므로 넣지 않습니다(다리 선택의 비용은 PBO가 셉니다).
+- SR0 = √V · ((1−γ)·Φ⁻¹(1−1/N) + γ·Φ⁻¹(1−1/(N·e))), DSR = Φ((SR−SR0)·√(T−1) / √(1 − 왜도·SR + (첨도−1)/4·SR²)). N = 1이거나 분산이 없으면 SR0 = 0(확률적 샤프 비율).
+- **한계:** 원장에 기록된 다른 실행의 시행 수는 아직 N에 더하지 않습니다(이 실행의 `experiments_total`만 씀). 시행 간 상관을 반영한 유효 시행 수 추정은 하지 않으므로 N은 상관이 높을수록 보수적입니다.
+
+임계값은 결과를 보기 전에 정했습니다(2026-10-30). 기존 스모크 산출물(`data/factorlab/smoke_20261025_mom20_rev5`)에 다시 적용해도 종합 상태는 이전과 같은 INSUFFICIENT_DATA입니다(dev 없음, 공통 날짜 11개).
 
 ## 구현하지 않은 것 (추정값을 만들지 않음)
 
-PBO(CSCV), Deflated Sharpe Ratio, White Reality Check / Hansen SPA, 시장 국면별 판정, 공매도 대차비용·제한.
-다중 실험 보정은 현재 "계획 수 대비 실제 평가 수" 경고와 실험 수 기록뿐입니다.
+White Reality Check / Hansen SPA, 시장 국면별 판정, 공매도 대차비용·제한. Strategy Library 게이트의 PBO·DSR(아래).
 
 ## Strategy Library 실행용 게이트 (별도 어댑터)
 
@@ -104,7 +129,7 @@ PBO(CSCV), Deflated Sharpe Ratio, White Reality Check / Hansen SPA, 시장 국�
 - 결과에는 `data_scope`(SYNTHETIC_DEMO / MIXED / REAL / UNKNOWN)와 `real_data_verified`(종합 PASS이면서 REAL일 때만 true)가 들어갑니다.
 - **현재 한계:** 앱 DB 실행에는 감사와 결과 상태 판정이 연결되지 않아 data_validity·audit_applied가 WATCH이므로 실제 데이터 실행도 지금은 PASS가 될 수 없습니다.
   이것은 판정을 일부러 막은 것이 아니라 근거가 없다는 표시이며, 근거가 모두 있는 입력에서는 PASS가 나오는지 테스트합니다(`test_pass_is_reachable_only_with_full_evidence`).
-  미구현: PBO, Deflated Sharpe, Reality Check/SPA, 파라미터 재최적화 워크포워드(`/api/backtests/walk-forward`는 게이트와 연결되지 않음), 국면별 판정,
+  미구현: PBO, Deflated Sharpe(Factor Lab 게이트에만 있음), Reality Check/SPA, 파라미터 재최적화 워크포워드(`/api/backtests/walk-forward`는 게이트와 연결되지 않음), 국면별 판정,
   비용·배당을 반영한 벤치마크. 벤치마크는 비용을 내지 않으므로 초과수익은 전략에 불리하게 계산됩니다.
 
 ## 공통 검사: data_eligibility (2026-10-26 추가, PR #6. 현재 적격성 규칙 `eligibility-v3`)
