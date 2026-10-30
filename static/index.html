@@ -35,6 +35,74 @@ details summary{cursor:pointer;color:var(--accent2);font-size:12px}pre{white-spa
 .foot{margin-top:16px;display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;color:#74859b;font-size:10px}
 @media(max-width:1000px){.g-main,.g2{grid-template-columns:1fr}.g4{grid-template-columns:repeat(2,minmax(0,1fr))}.g3{grid-template-columns:1fr}}
 @media(max-width:560px){.wrap{padding:14px 12px 30px}.g4{grid-template-columns:1fr 1fr}.stat-val{font-size:20px}}
+
+/* Pulsentra product UI refresh — layered overrides, preserving existing IDs and interactions */
+:root{
+ --bg:#f4f7fb;--panel:#ffffff;--line:#e4eaf2;--text:#17243a;--muted:#718096;
+ --accent:#147d75;--accent2:#4169e1;--red:#d94c5c;--yellow:#a87516;--green:#16845b;
+ --purple:#7654b8;--shadow:0 8px 28px rgba(25,45,75,.055);
+}
+html{background:var(--bg)}
+body{background:var(--bg);color:var(--text);font-family:Inter,-apple-system,BlinkMacSystemFont,"Pretendard","Apple SD Gothic Neo","Malgun Gothic",sans-serif;letter-spacing:-.012em}
+.wrap{max-width:1600px;padding:26px 30px 56px}
+.top{position:sticky;top:0;z-index:8;margin:-26px -30px 22px;padding:17px 30px;background:rgba(255,255,255,.92);backdrop-filter:blur(16px);border-bottom:1px solid var(--line)}
+.logo{border-radius:12px;background:#e4f5f1;color:#11665f;border:1px solid #cce9e3}
+.eyebrow{color:#168477;letter-spacing:.12em}
+.brand h1{font-size:24px;letter-spacing:-.045em;color:#14233a}
+.brand h1 small{color:#718096}
+.tagline{color:#77869a}
+.pill{background:#f8fafc;border-color:#e2e8f0;color:#607086}
+.notice{border:1px solid #dbe7f4;background:#eff5fb;color:#53677f;border-radius:12px;padding:12px 16px}
+.tabs{gap:6px;padding:0 0 12px;border-bottom:1px solid #e4eaf2}
+.tab{padding:9px 13px;color:#64748b;border:1px solid transparent;border-radius:10px;font-weight:650}
+.tab:hover{background:#eef3f8;color:#263b57}
+.tab.active{background:#e8f5f2;color:#126e64;border:1px solid #cfe9e3}
+.card{background:#fff;border:1px solid #e6ebf2;border-radius:16px;box-shadow:0 5px 20px rgba(22,38,62,.045)}
+.panel{padding:20px}
+.panel-title{font-size:15px;font-weight:750;letter-spacing:-.025em;color:#1d2c43}
+.panel-sub{font-size:12px;color:#8390a3}
+.stat{padding:18px 20px;min-height:112px}
+.stat-label{color:#718096;font-weight:600}
+.stat-val{font-size:27px;color:#172b46;letter-spacing:-.045em}
+.stat-sub{color:#8491a3}
+button{background:#fff;border-color:#dce4ee;color:#34445d;border-radius:9px;font-weight:650}
+button:hover{border-color:#8abbb2;background:#f6fbfa}
+button.primary{background:#147d75;border-color:#147d75;color:#fff}
+button.primary:hover{background:#106b64}
+button.ghost{background:transparent}
+.field{color:#718096;font-weight:600}
+.field input,.field select,.field textarea{background:#fff;border-color:#dfe6ef;color:#1e2e45;border-radius:9px;padding:9px 10px}
+.field input:focus,.field select:focus,.field textarea:focus,input:focus,select:focus{outline:2px solid rgba(20,125,117,.15);border-color:#5ba99d}
+.table-wrap{border-color:#e6ebf2;border-radius:12px;background:#fff}
+th{background:#f7f9fc;color:#748399;border-bottom-color:#e8edf3}
+td,th{border-bottom-color:#edf1f5}
+tbody tr:hover{background:#f6faf9}
+.kv div{background:#f8fafc;border-color:#e8edf3}
+.kv label{color:#7b899c}
+.kv b{color:#20324b}
+canvas{background:#101a2b;border:1px solid #dfe6ef;border-radius:12px}
+.help,.muted{color:#748399}
+.badge{border-radius:6px}
+.st-LIVE{color:#14734f;border-color:#bfe5d2;background:#eaf8f0}
+.st-DELAYED{color:#315eaa;border-color:#cbdaf5;background:#eef4ff}
+.st-HISTORICAL{color:#65469d;border-color:#ddd1f4;background:#f5f0fc}
+.st-DEMO{color:#916512;border-color:#f0dfb2;background:#fff8e6}
+.st-STALE{color:#a45c22;border-color:#f0d2b6;background:#fff4e9}
+.st-ERROR{color:#b33e4e;border-color:#f1c7ce;background:#fff0f2}
+.st-AVAILABLE,.st-PASS{color:#14734f;border-color:#bfe5d2;background:#eaf8f0}
+.st-LIMITED,.st-WATCH{color:#916512;border-color:#f0dfb2;background:#fff8e6}
+.st-PLANNED,.st-INSUFFICIENT_DATA{color:#65469d;border-color:#ddd1f4;background:#f5f0fc}
+.st-FAIL{color:#b33e4e;border-color:#f1c7ce;background:#fff0f2}
+.warn{border-color:#f0dfb2;background:#fff8e6;color:#805d18}
+.err{border-color:#f1c7ce;background:#fff0f2;color:#a73545}
+.libcard:hover{border-color:#72b7aa}
+.libcard.sel{border-color:#4169e1}
+details summary{color:#4169e1}
+.foot{color:#8996a8}
+.toast{box-shadow:0 8px 30px rgba(20,40,70,.15)}
+@media(max-width:1000px){.top{position:relative;margin:-14px -12px 18px;padding:14px 12px}.wrap{padding:14px 12px 30px}}
+@media(max-width:560px){.panel{padding:15px}.stat{padding:14px}.stat-val{font-size:22px}.tabs{padding-bottom:9px}}
+
 </style>
 </head>
 <body><div class="wrap">
