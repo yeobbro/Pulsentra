@@ -91,7 +91,7 @@ python -c "import pandas, fastapi, FinanceDataReader; print('Pulsentra environme
 
 **2026-10-30 사용자 실행 결과: 성공.** Homebrew로 Python 3.12.16 설치, 저장소 안에 별도 `.venv312` 생성, `requirements-lock.txt` 전체 설치 완료. 마지막 검증에서 `Python 3.12.16` 및 `Pulsentra environment OK` 출력 확인. 따라서 새 환경의 pandas, FastAPI, FinanceDataReader import가 성공했습니다. 기존 `.venv`/Conda 문제는 해결된 것으로 보이며, 기존 환경은 삭제하지 않고 보존합니다. 명령 블록의 주석 줄이 대화형 zsh에서 개별 실행되어 `zsh: command not found: #`가 출력됐지만, 설치와 최종 import 검증은 정상 완료했습니다.
 
-아직 `.venv312`에서 pytest를 실행하지 않았으므로 전체 테스트 결과는 미확인입니다. 다음 단계는 `source .venv312/bin/activate` 후 `python -m pytest -q -W error::DeprecationWarning` 실행입니다.
+**2026-10-30 로컬 전체 테스트 결과: 성공.** 사용자가 Mac의 `.venv312` (Python 3.12.16)에서 `python -m pytest -q -W error::DeprecationWarning` 실행. 결과: **498 passed, 2 skipped, 1 warning**, 82.56초. 테스트 실패는 없습니다. 경고는 `fastapi/testclient.py`에서 발생한 `StarletteDeprecationWarning`으로, Starlette의 `TestClient`와 `httpx` 조합 사용이 deprecated 되었다는 내용입니다. 테스트는 통과했으므로 즉시 의존성을 변경하지 않고 별도 호환성 정리 항목으로 추적합니다. 이 결과는 사용자 제공 로컬 실행 로그에 근거하며 GitHub Actions 결과와 구분합니다.
 
 ## 4. 데이터 소스 및 API 진행 원칙
 
@@ -121,7 +121,7 @@ python -c "import pandas, fastapi, FinanceDataReader; print('Pulsentra environme
    - 작업 트리가 clean인지 확인
    - Claude가 같은 브랜치에서 미커밋 작업 중이면 먼저 커밋/백업 또는 별도 브랜치로 보존
    - reset, force push, 기존 데이터 삭제 금지
-3. 로컬에서 전체 테스트 실행 및 결과 기록
+3. **완료:** Mac Python 3.12.16 `.venv312`에서 전체 테스트 498 passed / 2 skipped / 1 warning (82.56초). Starlette TestClient/httpx deprecation 경고는 후속 의존성 정리 항목으로 기록
 4. 로컬 FastAPI 대시보드를 실행해 데스크톱·모바일 UI 확인
 5. 종목 마스터 스냅샷을 실행하되 생성 파일과 데이터 출처 manifest 확인
 6. OpenDART·ECOS 등 자격증명이 준비된 공급원부터 개별적으로 통합
