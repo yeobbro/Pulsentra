@@ -98,6 +98,8 @@ python -m app.research --data my_csv_dir --format standard --out reports/mine
 
 ## 설치와 실행 (macOS / Linux, Python 3.11+)
 
+개인용 웹 배포(Render, 단일 사용자 Basic 인증, 영구 디스크): [`docs/DEPLOY_RENDER.md`](docs/DEPLOY_RENDER.md) · 설정 파일 [`render.yaml`](render.yaml)
+
 ```bash
 cd pulsentra
 python3 -m venv .venv && source .venv/bin/activate
@@ -151,9 +153,12 @@ numpy 2.5에서 `pd.Timedelta(days=N)`이 DeprecationWarning을 내 엄격 모�
 | `KIS_MIN_INTERVAL_SECONDS` | KIS 호출 간 최소 간격 (기본 0.35초) |
 | `DART_API_KEY` | OpenDART 인증키 |
 | `KIS_TIMEOUT_SECONDS`, `DART_TIMEOUT_SECONDS` | 호출 타임아웃(기본 12초). 재시도는 최대 3회(429·5xx·연결 오류만) |
-| `PULSENTRA_DATA_DIR`, `PULSENTRA_DB_PATH`, `PULSENTRA_MODEL_DIR` | 저장 위치 (`MSL_*` 이름도 계속 인식) |
+| `PULSENTRA_DATA_DIR`, `PULSENTRA_DB_PATH`, `PULSENTRA_MODEL_DIR`, `PULSENTRA_MODEL_PATH`, `PULSENTRA_MODEL_META_PATH` | 저장 위치 (`MSL_*` 이름도 계속 인식). Render에서는 모두 영구 디스크 `/var/data` 아래(`render.yaml`) |
 | `PULSENTRA_COMMISSION_BPS`, `PULSENTRA_SELL_TAX_BPS`, `PULSENTRA_SLIPPAGE_BPS` | 비용 기본값(가정값). 증권사 수수료와 해당 연도·시장의 세율을 확인해 설정 |
 | `PULSENTRA_STALE_AFTER_BUSINESS_DAYS` | 일봉이 STALE로 바뀌는 영업일 수 (기본 2) |
+| `PULSENTRA_ENV` | `production`이면 접근 제어 필수(인증정보 없으면 시작 실패)·상태 변경 요청의 출처 검사 (기본 `development`) |
+| `PULSENTRA_ACCESS_USERNAME`, `PULSENTRA_ACCESS_PASSWORD` | 단일 사용자 HTTP Basic 인증. 둘 다 있을 때만 켜짐(운영 모드에서는 필수). 값은 저장소에 넣지 않음 |
+| `PULSENTRA_AUTOLOAD_DEMO` | `true`면 데이터베이스가 비어 있을 때 첫 시작에 합성 DEMO를 한 번 적재 (기본 `false`) |
 
 `.env`는 `.gitignore`에 포함되어 있습니다. 키를 프런트엔드나 저장소, 로그에 넣지 마세요.
 

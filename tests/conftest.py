@@ -10,6 +10,11 @@ os.environ["PULSENTRA_DB_PATH"] = str(Path(_TMP) / "test.sqlite3")
 for key in ("KIS_APP_KEY", "KIS_APP_SECRET", "DART_API_KEY", "KRX_API_KEY"):   # never the real keys from .env
     os.environ[key] = ""
 os.environ["KIS_MIN_INTERVAL_SECONDS"] = "0"
+# Hosting settings from a developer .env must not change the test app: no access guard, no DEMO autoload.
+for key in ("PULSENTRA_ACCESS_USERNAME", "PULSENTRA_ACCESS_PASSWORD"):
+    os.environ[key] = ""
+os.environ["PULSENTRA_ENV"] = "development"
+os.environ["PULSENTRA_AUTOLOAD_DEMO"] = "false"
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 import numpy as np  # noqa: E402

@@ -66,5 +66,12 @@ DEFAULT_COMMISSION_BPS = _float("PULSENTRA_COMMISSION_BPS", 1.5)
 DEFAULT_SELL_TAX_BPS = _float("PULSENTRA_SELL_TAX_BPS", 20.0)
 DEFAULT_SLIPPAGE_BPS = _float("PULSENTRA_SLIPPAGE_BPS", 10.0)
 
+# Deployment. PULSENTRA_ENV=production turns on the single-user access guard (app/security.py): the app refuses to
+# start without PULSENTRA_ACCESS_USERNAME and PULSENTRA_ACCESS_PASSWORD, and state-changing requests must be same-origin.
+# Outside production the guard is active only when both values are set. The values are never logged or returned.
+APP_ENV = _env("PULSENTRA_ENV", None, "development").lower()
+# Load the synthetic DEMO data once at startup when the database holds no instruments and no bars (app/services.py).
+AUTOLOAD_DEMO = _env("PULSENTRA_AUTOLOAD_DEMO", None, "false").lower() in {"1", "true", "yes"}
+
 # A daily (end-of-day) series is STALE when its last bar is older than this many business days.
 STALE_AFTER_BUSINESS_DAYS = int(_float("PULSENTRA_STALE_AFTER_BUSINESS_DAYS", 2))
