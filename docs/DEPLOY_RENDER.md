@@ -35,7 +35,7 @@
 ## 3. Render에 연결하기 (사용자가 직접)
 
 1. Render Dashboard에서 **New → Blueprint**를 고르고 GitHub 저장소 `yeobbro/Pulsentra`를 연결합니다(Render GitHub 앱에 저장소 접근 권한 부여).
-2. Blueprint 파일로 `render.yaml`을 고르고, 브랜치는 `research/v0.4-data-audit`가 GitHub에 있는지 확인합니다. `render.yaml`은 이 브랜치에 들어 있어야 합니다(현재는 `deploy/render-private-web` 작업 브랜치에만 있음 — PR 병합 후 진행).
+2. Blueprint 파일로 `render.yaml`을 고르고, 브랜치는 `research/v0.4-data-audit`가 GitHub에 있는지 확인합니다. `render.yaml`은 현재 기준 브랜치 `research/v0.4-data-audit`에 포함되어 있습니다. Blueprint 생성 전 이 브랜치가 선택되어 있는지 확인하세요.
 3. 생성 화면에서 Render가 `sync: false` 값 두 개를 묻습니다.
    - `PULSENTRA_ACCESS_USERNAME`: 로그인 이름
    - `PULSENTRA_ACCESS_PASSWORD`: 긴 무작위 비밀번호(예: 비밀번호 관리자에서 24자 이상 생성)
@@ -45,7 +45,26 @@
    - 시작 로그에 `AccessConfigError`가 보이면 3번의 두 값이 비어 있는 것입니다. 이 경우 앱은 일부러 시작하지 않습니다.
 6. Python 버전: `render.yaml`은 버전을 고정하지 않으므로 Render의 기본 Python 버전이 쓰입니다. CI는 3.12·3.13, Mac 로컬은 3.14.6입니다. 고정하려면 Render 문서의 Python 버전 지정 방법을 확인해 `PYTHON_VERSION` 환경 변수를 추가하세요(이번 작업에서는 추가하지 않음).
 
-## 4. 접속과 기능 확인
+## 4. 실제 데이터 API 키 설정
+
+Render Dashboard → 서비스 → **Environment**에서 아래 키를 추가한 뒤 재배포합니다. 값은 Git·코드·채팅에 절대 넣지 않습니다.
+
+| 환경변수 | 용도 | 서비스 동작 |
+|---|---|---|
+| `KIS_APP_KEY` | 한국투자증권 앱 키 | 국내 현재가 REST 조회 및 일봉 동기화 |
+| `KIS_APP_SECRET` | 한국투자증권 앱 시크릿 | KIS 인증 |
+| `KIS_PAPER` | `false` 실전 시세 / `true` 모의 도메인 | 주문 기능은 없음 |
+| `DART_API_KEY` | OpenDART 인증키 | 기업 공시 조회·위험 플래그 |
+| `KRX_API_KEY` | KRX Open API 인증키 | 연구용 로컬 교차 검증만. 앱 DB 적재 및 외부 화면/API 시세 제공은 하지 않음 |
+
+**주의**
+- KIS는 현재가 REST 스냅샷과 일봉 조회를 지원합니다. WebSocket 실시간 체결 스트림은 아직 구현되지 않았습니다.
+- OpenDART 공시는 `POST /api/dart/sync`로 종목 코드와 조회 기간을 지정해 동기화합니다.
+- KRX 키는 발급만으로 모든 서비스 이용 권한이 생기는 것이 아닙니다. 각 서비스 승인 상태와 약관을 확인해야 하며, 현재 코드의 라이선스 차단을 우회하지 않습니다.
+- KIS 키가 아직 없다면 KIS 환경변수는 비워두고, OpenDART 연동부터 검증할 수 있습니다.
+- 키 등록 후 `GET /api/provider-status`에서 설정 여부만 확인할 수 있습니다. 응답에는 키 값이 포함되지 않습니다.
+
+## 5. 접속과 기능 확인
 
 | 순서 | 확인할 것 |
 |---|---|
@@ -61,7 +80,7 @@ DEMO 자동 적재 규칙:
 - 데이터베이스에 종목(instruments)도 일봉(candles)도 없을 때만 한 번 넣습니다. 이미 데이터가 있으면 아무것도 지우거나 덮어쓰지 않습니다.
 - 넣은 뒤 `/var/data/market_signal_lab.sqlite3.demo-autoloaded` 표시 파일을 남깁니다. 그래서 DEMO를 화면에서 일부러 지운 뒤 재시작해도 다시 넣지 않습니다. 다시 넣으려면 화면의 DEMO 불러오기를 씁니다.
 
-## 5. 보안 범위와 한계
+## 6. 보안 범위와 한계
 
 - **단일 계정입니다.** 사용자별 데이터 분리는 없습니다. 이름·비밀번호를 아는 사람은 모두 같은 데이터베이스를 보고 바꿉니다.
 - 인증은 HTTP Basic입니다(`app/security.py`). Render가 HTTPS를 제공하므로 비밀번호는 암호화된 연결로만 보내집니다. HTTP 주소로 접속하지 마세요.
@@ -73,7 +92,7 @@ DEMO 자동 적재 규칙:
 - `/docs`·`/redoc` 화면은 인증 뒤에도 Swagger·ReDoc 자산을 외부 CDN에서 불러옵니다.
 - KRX 데이터는 이용약관상 제3자 제공이 금지돼 있어, 원격 서비스에 올리거나 다른 사람에게 보여 주지 마세요([`DATA_SOURCES.md`](DATA_SOURCES.md) "이용 조건").
 
-## 6. SQLite 백업과 복구
+## 7. SQLite 백업과 복구
 
 Render는 영구 디스크의 스냅샷을 하루 한 번 만들고 7일 보관합니다. 다만 Render 문서는 데이터베이스가 들어 있는 디스크는 스냅샷 복원 대신 데이터베이스 자체 도구로 백업하라고 권합니다. 스냅샷 복원은 디스크 전체를 그 시점으로 되돌리고, 이후 변경은 모두 사라집니다.
 
@@ -97,7 +116,7 @@ ls -l /var/data
 2. Shell에서 현재 파일을 따로 보관한 뒤 백업으로 바꿉니다: `cp /var/data/market_signal_lab.sqlite3 /var/data/before-restore.sqlite3 && cp /var/data/backup-YYYYMMDD.sqlite3 /var/data/market_signal_lab.sqlite3`
 3. 서비스를 재시작합니다(실행 중 연결이 바뀐 파일을 계속 쓰지 않도록).
 
-## 7. 이번 준비 작업에서 확인한 것과 하지 않은 것
+## 8. 이번 준비 작업에서 확인한 것과 하지 않은 것
 
 | 항목 | 상태 |
 |---|---|
