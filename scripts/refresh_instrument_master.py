@@ -60,7 +60,7 @@ def normalize_listing(frame: pd.DataFrame) -> pd.DataFrame:
     if out["symbol"].duplicated().any():
         duplicates = out.loc[out["symbol"].duplicated(), "symbol"].head(5).tolist()
         raise ValueError(f"Duplicate instrument codes in listing response: {duplicates}")
-    return out.sort_values(["market", "symbol"]).reset_index(drop=True)
+    return out.sort_values(["symbol"], kind="stable").reset_index(drop=True)
 
 
 def write_snapshot(frame: pd.DataFrame, out_dir: Path, fetched_at: str | None = None) -> dict[str, Any]:
