@@ -7,3 +7,6 @@ joblib>=1.4,<2.0
 requests>=2.32,<3.0
 python-multipart>=0.0.9,<1.0
 python-dotenv>=1.0,<2.0
+
+# Korean instrument-master reference snapshots (not a licensed market-price feed)
+finance-datareader>=0.9.202,<1.0
