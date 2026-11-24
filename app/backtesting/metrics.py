@@ -110,15 +110,14 @@ def period_returns(equity: pd.DataFrame, freq: str) -> list[dict]:
     if equity.empty:
         return []
     e = equity.set_index("date")["equity"].astype(float)
-    rule = "ME" if freq == "M" else "YE"
-    last = e.resample(rule).last().dropna()
-    first_value = e.iloc[0]
-    seed = pd.Series([first_value], index=pd.DatetimeIndex([e.index[0] - pd.Timedelta(days=1)]))
-    prev = pd.concat([seed, last]).shift(1).iloc[1:]
-    out = []
-    for d, v in last.items():
-        out.append({"period": d.strftime("%Y-%m" if freq == "M" else "%Y"), "return": float(v / prev.loc[d] - 1)})
-    return out
+    # groupby on calendar periods instead of resample(): same "last value per period" result, and it avoids a
+    # pandas 2.3 resample code path that emits NumPy generic-timedelta deprecation warnings on NumPy >= 2.5.
+    e = e.dropna()
+    if e.empty:
+        return []
+    last = e.groupby(e.index.to_period("M" if freq == "M" else "Y")).last()
+    prev = np.r_[e.iloc[0], last.to_numpy()[:-1]]
+    return [{"period": str(p), "return": float(v / pv - 1)} for p, v, pv in zip(last.index, last.to_numpy(), prev)]
 
 
 def buy_and_hold_curve(prices: pd.DataFrame, dates: pd.Series, initial_cash: float) -> pd.DataFrame:

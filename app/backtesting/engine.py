@@ -38,6 +38,9 @@ class ExitConfig:
     trail_atr_mult: float | None = None
     ma_exit: str | None = None        # "ma20" | "ma60" | None — exit next open after a close below it
     max_hold_days: int = 10
+    # True: also exit at the next open after the strategy's own exit rule fires at a close (Strategy.exit_signals).
+    # Off by default, so every existing run is unchanged. Stops, targets and the time limit still apply.
+    strategy_exit: bool = False
 
     @classmethod
     def from_dict(cls, data: dict[str, Any] | None) -> "ExitConfig":
@@ -112,12 +115,14 @@ def run_portfolio(prepared: dict[Key, pd.DataFrame], strategy: Strategy, exit_cf
     n_signals = 0
     for key, x in prepared.items():
         sig = strategy.signals(x)
+        xs = strategy.exit_signals(x) if exit_cfg.strategy_exit else None
         if signal_filter is not None:
             sig = sig & signal_filter(key, x).reindex(x.index, fill_value=False).astype(bool)
         d = x["date"].to_numpy(dtype="datetime64[ns]").astype("int64")
         cols = {"d": d, "dl": d, "n": len(x)}
         for c in ("open", "high", "low", "close", "atr_14", "swing_low_10", "volume_ratio_20", "ma20", "ma60"):
             cols[c] = x[c].to_numpy(dtype=float) if c in x else np.full(len(x), np.nan)
+        cols["sx"] = xs.to_numpy(dtype=bool) if xs is not None else None
         cols["flags"] = x["quality_flags"].fillna("").astype(str).to_numpy() if "quality_flags" in x else np.full(len(x), "", dtype=object)
         A[key] = cols
         in_win = np.ones(len(d), dtype=bool)
@@ -343,6 +348,8 @@ def run_portfolio(prepared: dict[Key, pd.DataFrame], strategy: Strategy, exit_cf
                     mv = float(a[exit_cfg.ma_exit][i])
                     if mv == mv and c < mv:
                         pos.exit_next_open = f"{exit_cfg.ma_exit.upper()}_EXIT"
+                if a["sx"] is not None and a["sx"][i] and not pos.exit_next_open:
+                    pos.exit_next_open = "STRATEGY_EXIT"     # decided at this close, filled at the next open
 
         equity = cash + sum(p.qty * last_close.get(k, p.entry_price) for k, p in positions.items())
         peak = max(peak, equity)

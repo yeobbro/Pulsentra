@@ -33,7 +33,7 @@ def _float(name: str, default: float, legacy: str | None = None) -> float:
 APP_NAME = "Pulsentra"
 APP_NAME_KO = "펄센트라"
 APP_TAGLINE = "AI-Powered Market Intelligence & Strategy Validation Platform"
-APP_VERSION = "0.2.0"
+APP_VERSION = "0.4.0.dev0"  # keep in step with pyproject.toml
 
 DATA_DIR = Path(_env("PULSENTRA_DATA_DIR", "MSL_DATA_DIR", str(BASE_DIR / "data")))
 DATA_DIR.mkdir(parents=True, exist_ok=True)
@@ -54,12 +54,24 @@ KIS_MIN_INTERVAL_SECONDS = _float("KIS_MIN_INTERVAL_SECONDS", 0.35)
 DART_API_KEY = _env("DART_API_KEY")
 DART_TIMEOUT_SECONDS = _float("DART_TIMEOUT_SECONDS", 12.0)
 
+# KRX Open API (openapi.krx.co.kr). The key travels only in the AUTH_KEY request header.
+KRX_API_KEY = _env("KRX_API_KEY")
+KRX_TIMEOUT_SECONDS = _float("KRX_TIMEOUT_SECONDS", 20.0)
+KRX_MIN_INTERVAL_SECONDS = _float("KRX_MIN_INTERVAL_SECONDS", 0.5)
+
 # Research assumptions, not broker-accurate fee quotes. Kept for the MVP `/api/backtest` endpoint.
 DEFAULT_ROUND_TRIP_COST_BPS = _float("DEFAULT_ROUND_TRIP_COST_BPS", 40.0)
 # Portfolio engine defaults (per side). Verify against your broker and the current tax law before use.
 DEFAULT_COMMISSION_BPS = _float("PULSENTRA_COMMISSION_BPS", 1.5)
 DEFAULT_SELL_TAX_BPS = _float("PULSENTRA_SELL_TAX_BPS", 20.0)
 DEFAULT_SLIPPAGE_BPS = _float("PULSENTRA_SLIPPAGE_BPS", 10.0)
+
+# Deployment. PULSENTRA_ENV=production turns on the single-user access guard (app/security.py): the app refuses to
+# start without PULSENTRA_ACCESS_USERNAME and PULSENTRA_ACCESS_PASSWORD, and state-changing requests must be same-origin.
+# Outside production the guard is active only when both values are set. The values are never logged or returned.
+APP_ENV = _env("PULSENTRA_ENV", None, "development").lower()
+# Load the synthetic DEMO data once at startup when the database holds no instruments and no bars (app/services.py).
+AUTOLOAD_DEMO = _env("PULSENTRA_AUTOLOAD_DEMO", None, "false").lower() in {"1", "true", "yes"}
 
 # A daily (end-of-day) series is STALE when its last bar is older than this many business days.
 STALE_AFTER_BUSINESS_DAYS = int(_float("PULSENTRA_STALE_AFTER_BUSINESS_DAYS", 2))

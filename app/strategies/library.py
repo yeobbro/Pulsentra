@@ -98,12 +98,18 @@ class MATrend(Strategy):
         above = fast > slow
         return above & ~above.shift(1, fill_value=True) & slow.shift(1).notna()
 
+    def _exit_signal(self, x):
+        """Dead cross: the fast average closes below the slow one (used only with ExitConfig.strategy_exit)."""
+        fast = x["close"].rolling(int(self.params["fast"]), min_periods=int(self.params["fast"])).mean()
+        slow = x["close"].rolling(int(self.params["slow"]), min_periods=int(self.params["slow"])).mean()
+        return fast < slow
+
 
 class RSIRebound(Strategy):
     key = "rsi_rebound"
     name = "RSI 과매도 반등"
     hypothesis = "RSI(14)가 과매도 기준 아래에서 위로 다시 올라오면 단기 반등하는가? (장기 추세 필터 선택)"
-    defaults = {"oversold": 30.0, "require_above_ma120": False}
+    defaults = {"oversold": 30.0, "require_above_ma120": False, "exit_rsi": 50.0}
 
     def _signal(self, x):
         rsi = col(x, "rsi_14")
@@ -111,6 +117,10 @@ class RSIRebound(Strategy):
         if self.params["require_above_ma120"]:
             s &= x["close"] > col(x, "ma120")
         return s
+
+    def _exit_signal(self, x):
+        """RSI(14) closes at or above `exit_rsi` (used only with ExitConfig.strategy_exit)."""
+        return col(x, "rsi_14") >= self.params["exit_rsi"]
 
 
 class BollingerSqueeze(Strategy):
@@ -199,3 +209,57 @@ class MomentumSimple(Strategy):
 
     def _signal(self, x):
         return (x["close"] > col(x, "prior_high_close_120")) & (col(x, "ret_120") > 0) & _liquid(x, self.params)
+
+
+class DonchianBreakout(Strategy):
+    key = "donchian_breakout"
+    name = "Donchian 채널 돌파 (N일 고가 돌파 · M일 저가 이탈 청산)"
+    hypothesis = ("종가가 직전 N거래일 최고가(오늘 제외)를 처음 넘으면 추세가 이어지는가? 청산 규칙은 종가가 직전 M거래일 "
+                  "최저가 아래로 내려갈 때(ExitConfig.strategy_exit=True일 때 적용).")
+    defaults = {"entry_n": 20, "exit_n": 10, "min_avg_turnover": 0.0}
+
+    def _signal(self, x):
+        n = int(self.params["entry_n"])
+        upper = x["high"].rolling(n, min_periods=n).max().shift(1)        # channel from bars t-n..t-1
+        above = x["close"] > upper
+        return above & ~above.shift(1, fill_value=True) & _liquid(x, self.params)
+
+    def _exit_signal(self, x):
+        m = int(self.params["exit_n"])
+        lower = x["low"].rolling(m, min_periods=m).min().shift(1)
+        return x["close"] < lower
+
+
+class BollingerReversion(Strategy):
+    key = "bb_reversion"
+    name = "볼린저밴드 하단 복귀 평균회귀"
+    hypothesis = ("종가가 하단 밴드(이동평균 − k·표준편차) 아래에 있다가 다시 밴드 안으로 들어오면 이동평균 쪽으로 되돌아가는가? "
+                  "청산 규칙은 종가가 중심선(이동평균) 이상일 때(ExitConfig.strategy_exit=True일 때 적용).")
+    defaults = {"window": 20, "k": 2.0, "min_avg_turnover": 0.0}
+
+    def _bands(self, x):
+        w = int(self.params["window"])
+        mid = x["close"].rolling(w, min_periods=w).mean()
+        sd = x["close"].rolling(w, min_periods=w).std(ddof=0)
+        return mid, mid - float(self.params["k"]) * sd
+
+    def _signal(self, x):
+        _, lower = self._bands(x)
+        below = x["close"] < lower
+        return below.shift(1, fill_value=False) & ~below & lower.notna() & _liquid(x, self.params)
+
+    def _exit_signal(self, x):
+        mid, _ = self._bands(x)
+        return x["close"] >= mid
+
+
+class ATRBreakout(Strategy):
+    key = "atr_breakout"
+    name = "ATR 변동성 돌파 (종가 확인형)"
+    hypothesis = ("오늘 종가가 전일 종가보다 k × ATR(14, 전일까지) 이상 오르면 변동성 확장이 같은 방향으로 이어지는가? "
+                  "장중 돌파가격 체결형(open + k·range)은 일봉·다음 날 시가 체결 엔진으로 검증할 수 없어 종가 확인형으로 정의.")
+    defaults = {"k": 1.5, "min_avg_turnover": 0.0}
+
+    def _signal(self, x):
+        atr_prev = col(x, "atr_14").shift(1)
+        return ((x["close"] - x["close"].shift(1)) >= float(self.params["k"]) * atr_prev) & (atr_prev > 0) & _liquid(x, self.params)

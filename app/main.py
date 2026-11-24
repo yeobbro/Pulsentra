@@ -13,7 +13,7 @@ from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
-from app import alerts, db, paper_trading
+from app import alerts, db, paper_trading, security
 from app.backtest import backtest_symbol
 from app.backtesting.engine import ExitConfig
 from app.backtesting.report import compare_exits, compare_strategies, run_report, signal_study, walk_forward
@@ -28,19 +28,29 @@ from app.providers.dart import DartAPIError, DartClient
 from app.providers.kis import KISClient, KisAPIError
 from app.risk import CostModel, RiskConfig
 from app.scanner import ScanConfig, evidence, run_scan
-from app.services import (adopted_model, json_safe, load_demo, lookups, model_list, run_ml, save_backtest, universe)
-from app.settings import (APP_NAME, APP_NAME_KO, APP_TAGLINE, APP_VERSION, BASE_DIR, DB_PATH, DEFAULT_ROUND_TRIP_COST_BPS,
-                          KIS_PAPER)
-from app.strategies import get_strategy, list_strategies
+from app.services import (adopted_model, autoload_demo_if_empty, json_safe, load_demo, lookups, model_list, run_ml, save_backtest,
+                          universe)
+from app.settings import (APP_NAME, APP_NAME_KO, APP_TAGLINE, APP_VERSION, AUTOLOAD_DEMO, BASE_DIR, DB_PATH,
+                          DEFAULT_ROUND_TRIP_COST_BPS, KIS_PAPER)
+from app import strategy_library
+from app.research.ledger import LedgerError
+from app.strategies import catalog, get_strategy, list_strategies
 
 
 @asynccontextmanager
 async def lifespan(_: FastAPI):
     init_db()
+    if AUTOLOAD_DEMO:
+        autoload_demo_if_empty()
     yield
 
 
+# Access control for hosted use (app/security.py). Fails here, at import/startup, in production without credentials.
+ACCESS = security.AccessConfig.from_env()
+ACCESS.validate()
+
 app = FastAPI(title=APP_NAME, version=APP_VERSION, description=APP_TAGLINE, lifespan=lifespan)
+app.add_middleware(security.AccessGuard, config=ACCESS)
 app.mount("/static", StaticFiles(directory=str(BASE_DIR / "static")), name="static")
 _json_safe = json_safe  # MVP name
 
@@ -62,6 +72,7 @@ class ExitModel(BaseModel):
     trail_atr_mult: Optional[float] = Field(None, gt=0, le=20)
     ma_exit: Optional[str] = None
     max_hold_days: int = Field(10, ge=1, le=252)
+    strategy_exit: bool = False
 
 
 class RiskModel(BaseModel):
@@ -219,6 +230,12 @@ def _universe_or_404(market: str, symbols: list[str] | None = None):
 
 # ------------------------------------------------------------------ pages & status
 
+@app.get(security.HEALTH_PATH, include_in_schema=False)
+def healthz():
+    """Unauthenticated liveness probe for the host. Returns nothing about data, versions or configuration."""
+    return {"status": "ok"}
+
+
 @app.get("/", response_class=HTMLResponse)
 def home():
     return HTMLResponse((BASE_DIR / "static" / "index.html").read_text(encoding="utf-8"))
@@ -239,7 +256,8 @@ def _provider_status() -> dict:
             {"name": "OpenDART (공시 목록)", "configured": dart.configured, "implemented": True,
              "status": "READY" if dart.configured else "NOT_CONFIGURED"},
             {"name": "KRX OPEN API", "configured": False, "implemented": False, "status": "NOT_IMPLEMENTED",
-             "note": "이용 계약·엔드포인트 확인 후 구현 예정"},
+             "note": "연구용 로컬 검증(python -m app.krxcheck)만 구현. 이용약관상 제3자 제공 금지·비상업적 이용 — "
+                     "화면·API 제공은 라이선스 확인 전까지 미구현"},
             {"name": "CSV 업로드", "configured": True, "implemented": True, "status": DataStatus.HISTORICAL.value},
         ],
     }
@@ -405,7 +423,7 @@ def dart_sync(req: DartSyncRequest):
     try:
         codes = client.corp_codes()
         end = datetime.now().strftime("%Y%m%d")
-        start = (datetime.now() - pd.Timedelta(days=req.days)).strftime("%Y%m%d")
+        start = (datetime.now() - pd.Timedelta(req.days, unit="D")).strftime("%Y%m%d")
         saved, missing = 0, []
         for sym in req.symbols:
             info = codes.get(sym.strip())
@@ -625,6 +643,138 @@ def backtest_history(limit: int = 30):
         r["summary"] = json.loads(r["summary"] or "{}")
         r["sources"] = json.loads(r["sources"] or "[]")
     return rows
+
+
+# ------------------------------------------------------------------ strategy library
+
+class LibraryRunRequest(BaseModel):
+    market: str = "KR"
+    symbols: Optional[list[str]] = None
+    params: dict[str, Any] = {}
+    exit: Optional[ExitModel] = None          # None: the entry's default exit (strategy exit rule where it has one)
+    risk: RiskModel = RiskModel()
+    costs: CostsModel = CostsModel()
+    start: Optional[str] = None
+    end: Optional[str] = None
+    random_runs: int = Field(10, ge=0, le=50)
+    ledger: bool = False                      # pre-register in the Experiment Ledger and record the run
+
+
+class LibraryItem(BaseModel):
+    id: str
+    params: dict[str, Any] = {}
+    label: Optional[str] = None
+
+
+class LibraryCompareRequest(BaseModel):
+    market: str = "KR"
+    symbols: Optional[list[str]] = None
+    items: list[LibraryItem] = Field(..., min_length=1, max_length=12)
+    exit: ExitModel = ExitModel()
+    risk: RiskModel = RiskModel()
+    costs: CostsModel = CostsModel()
+    start: Optional[str] = None
+    end: Optional[str] = None
+
+
+class LibrarySavedCompareRequest(BaseModel):
+    run_ids: list[int] = Field(..., min_length=2, max_length=12)
+
+
+def _entry_or_404(entry_id: str):
+    try:
+        return catalog.get_entry(entry_id)
+    except KeyError as exc:
+        raise HTTPException(status_code=404, detail=str(exc).strip("'\""))
+
+
+@app.get("/api/library/strategies")
+def library_strategies(family: Optional[str] = None, q: Optional[str] = None, status: Optional[str] = None):
+    if family and family not in catalog.FAMILIES:
+        raise HTTPException(status_code=400, detail=f"unknown family {family!r}")
+    if status and status not in catalog.STATUSES:
+        raise HTTPException(status_code=400, detail=f"unknown status {status!r}")
+    return {"families": catalog.FAMILIES, "statuses": list(catalog.STATUSES),
+            "note": "대표 전략 템플릿입니다. 인기·성과 순위가 아니며 수익을 보장하지 않습니다.",
+            "entries": [e.as_dict() for e in catalog.search(family, q, status)]}
+
+
+@app.get("/api/library/strategies/{entry_id}")
+def library_strategy(entry_id: str):
+    return _entry_or_404(entry_id).as_dict()
+
+
+@app.post("/api/library/strategies/{entry_id}/backtest")
+def library_backtest(entry_id: str, req: LibraryRunRequest):
+    _entry_or_404(entry_id)
+    try:
+        rep = strategy_library.run_entry(entry_id, req.params, _exit(req.exit) if req.exit else None, _risk(req.risk), _costs(req.costs),
+                                         req.market, req.symbols, req.start, req.end, req.random_runs, req.ledger,
+                                         request=req.model_dump())
+    except strategy_library.NotRunnable as exc:
+        raise HTTPException(status_code=409, detail=str(exc))
+    except LookupError as exc:
+        raise HTTPException(status_code=404, detail=str(exc))
+    except LedgerError as exc:
+        raise HTTPException(status_code=409, detail=f"Experiment Ledger: {exc}")
+    except ValueError as exc:
+        raise _bad_request(exc)
+    return json_safe(rep)
+
+
+@app.post("/api/library/compare")
+def library_compare(req: LibraryCompareRequest):
+    for it in req.items:
+        _entry_or_404(it.id)
+    try:
+        res = strategy_library.compare_entries([it.model_dump() for it in req.items], _exit(req.exit), _risk(req.risk), _costs(req.costs),
+                                               req.market, req.symbols, req.start, req.end)
+    except LookupError as exc:
+        raise HTTPException(status_code=404, detail=str(exc))
+    except ValueError as exc:
+        raise _bad_request(exc)
+    frame, _, _ = universe(req.market, req.symbols)
+    res["run_id"] = save_backtest("library_compare", req.model_dump(), frame, res)
+    return json_safe(res)
+
+
+@app.get("/api/library/runs")
+def library_runs(limit: int = 50):
+    return json_safe(strategy_library.list_runs(limit))
+
+
+class LibraryGateRequest(BaseModel):
+    thresholds: dict[str, Any] = {}           # overrides; any change from the registered/default values makes the check WATCH
+
+
+@app.post("/api/library/runs/{run_id}/robustness")
+def library_run_robustness(run_id: int, req: LibraryGateRequest = LibraryGateRequest()):
+    try:
+        return json_safe(strategy_library.gate_run(run_id, req.thresholds))
+    except LookupError as exc:
+        raise HTTPException(status_code=404, detail=str(exc))
+    except LedgerError as exc:
+        raise HTTPException(status_code=409, detail=f"Experiment Ledger: {exc}")
+    except (ValueError, TypeError) as exc:
+        raise _bad_request(exc)
+
+
+@app.get("/api/library/runs/{run_id}/robustness")
+def library_run_robustness_history(run_id: int):
+    try:
+        return strategy_library.list_gates(run_id)
+    except LookupError as exc:
+        raise HTTPException(status_code=404, detail=str(exc))
+
+
+@app.post("/api/library/runs/compare")
+def library_runs_compare(req: LibrarySavedCompareRequest):
+    try:
+        return json_safe(strategy_library.compare_saved(req.run_ids))
+    except LookupError as exc:
+        raise HTTPException(status_code=404, detail=str(exc))
+    except ValueError as exc:
+        raise _bad_request(exc)
 
 
 # ------------------------------------------------------------------ ML

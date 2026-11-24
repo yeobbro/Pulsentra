@@ -33,6 +33,13 @@ def record_failure(source: str, market: str | None, symbol: str | None, error: s
 def ingest_frame(df: pd.DataFrame, source: str, adjusted: bool | None = None, market: str | None = None,
                  symbol: str | None = None, db_path: Path | str | None = None) -> dict:
     """Validate, write the valid rows, store every issue. Returns a summary for the API/UI."""
+    from app.data.schema import license_refusal
+    # refused before anything is written, the run log included. The frame's own `source` column is checked too: it is
+    # overwritten below, so a saved KRX file uploaded as CSV would otherwise be stored as "csv_import".
+    for src in [source, *(df["source"].dropna().unique() if "source" in df.columns else [])]:
+        refusal = license_refusal(src)
+        if refusal:
+            raise ValueError(refusal)
     run_id = start_run(source, market, symbol, db_path)
     try:
         work = df.copy()

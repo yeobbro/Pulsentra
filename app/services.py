@@ -16,7 +16,7 @@ from app.data.ingest import ingest_frame
 from app.demo import DEMO_SOURCE, demo_instruments, make_demo_data
 from app.models.lab import MLConfig, report_json, run_lab
 from app.risk import CostModel, RiskConfig
-from app.settings import MODEL_DIR
+from app.settings import DB_PATH, MODEL_DIR
 
 
 def benchmark_symbols(market: str, db_path=None) -> list[str]:
@@ -60,6 +60,28 @@ def load_demo(db_path=None, days: int = 800, n_symbols: int = 12) -> dict:
             "message": "합성 데모 데이터입니다. 실시간 시세가 아니며 전략·모델 성능 평가나 실제 매매 근거로 사용할 수 없습니다."}
 
 
+def demo_autoload_marker(db_path=None) -> Path:
+    """File next to the database recording that the startup DEMO load already ran (so it runs at most once)."""
+    path = Path(db_path or DB_PATH)
+    return path.with_name(path.name + ".demo-autoloaded")
+
+
+def autoload_demo_if_empty(db_path=None) -> dict:
+    """Startup hook for PULSENTRA_AUTOLOAD_DEMO=true: load the synthetic DEMO set once, only into an empty database.
+
+    Skips (and never deletes or overwrites anything) when the database already has any instrument or bar, or when an
+    earlier startup already loaded DEMO for this database file (so DEMO deleted on purpose is not reloaded)."""
+    marker = demo_autoload_marker(db_path)
+    if marker.exists():
+        return {"loaded": False, "reason": "already_autoloaded"}
+    has_data = db.fetch_all("SELECT EXISTS(SELECT 1 FROM candles) AS c, EXISTS(SELECT 1 FROM instruments) AS i", (), db_path)[0]
+    if has_data["c"] or has_data["i"]:
+        return {"loaded": False, "reason": "database_not_empty"}
+    res = load_demo(db_path)
+    marker.write_text(db.utc_now() + "\n", encoding="utf-8")
+    return {"loaded": True, "rows_saved": res.get("rows_saved"), "market": "DEMO", "message": res["message"]}
+
+
 def fingerprint(frame: pd.DataFrame) -> str:
     if frame.empty:
         return ""
@@ -69,7 +91,7 @@ def fingerprint(frame: pd.DataFrame) -> str:
 
 def save_backtest(kind: str, request: dict, frame: pd.DataFrame, report: dict, db_path=None) -> int:
     info = report.get("data") or data_info(frame, None)
-    summary = {k: report.get(k) for k in ("metrics", "benchmark", "cost_impact", "out_of_sample", "rows", "variants", "period") if k in report}
+    summary = {k: report.get(k) for k in ("metrics", "benchmark", "cost_impact", "out_of_sample", "rows", "variants", "period", "library") if k in report}
     return db.execute("""INSERT INTO backtest_runs (created_at, kind, request, data_fingerprint, sources, quality_warnings, summary, synthetic)
                          VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
                       (db.utc_now(), kind, db.dumps(request), fingerprint(frame), db.dumps(info.get("sources")),

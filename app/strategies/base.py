@@ -40,9 +40,25 @@ class Strategy(ABC):
         # Unknown (NaN) is never a signal.
         return s.astype("float").fillna(0.0).astype(bool).reindex(x.index, fill_value=False)
 
+    def _exit_signal(self, x: pd.DataFrame) -> pd.Series | None:
+        """Optional exit rule evaluated at the close of bar t (rows <= t only). None = no own exit rule."""
+        return None
+
+    def exit_signals(self, x: pd.DataFrame) -> pd.Series | None:
+        if x.empty:
+            return None
+        s = self._exit_signal(x)
+        if s is None:
+            return None
+        return s.astype("float").fillna(0.0).astype(bool).reindex(x.index, fill_value=False)
+
+    @property
+    def has_exit_rule(self) -> bool:
+        return type(self)._exit_signal is not Strategy._exit_signal
+
     def describe(self) -> dict:
         return {"key": self.key, "name": self.name, "hypothesis": self.hypothesis, "params": self.params,
-                "requires": list(self.requires), "available": self.available, "unavailable_reason": self.unavailable_reason}
+                "requires": list(self.requires), "has_exit_rule": self.has_exit_rule, "available": self.available, "unavailable_reason": self.unavailable_reason}
 
 
 def col(x: pd.DataFrame, name: str) -> pd.Series:
