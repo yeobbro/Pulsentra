@@ -1,8 +1,23 @@
-# Tool configuration only. Dependencies live in requirements*.txt (ranges) and requirements-lock.txt (one tested set).
+# Runtime dependencies are listed twice on purpose: requirements.txt (Render, local setup) and
+# [project].dependencies below (Vercel installs from pyproject.toml whenever it has a [project] table).
+# tests/test_dependency_files.py keeps the two lists identical. requirements-lock.txt holds one tested set.
 [project]
 name = "pulsentra"
 version = "0.4.0.dev0"
 requires-python = ">=3.11"
+dependencies = [
+    "fastapi>=0.115,<1.0",
+    "uvicorn[standard]>=0.30,<1.0",
+    "pandas>=2.2,<3.0",
+    "numpy>=1.26,<3.0",
+    "scikit-learn>=1.5,<2.0",
+    "joblib>=1.4,<2.0",
+    "requests>=2.32,<3.0",
+    "python-multipart>=0.0.9,<1.0",
+    "python-dotenv>=1.0,<2.0",
+    # Korean instrument-master reference snapshots (not a licensed market-price feed)
+    "finance-datareader>=0.9.202,<1.0",
+]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
