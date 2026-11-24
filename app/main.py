@@ -26,6 +26,7 @@ from app.indicators import INDICATOR_SPECS, compute_indicators
 from app.models.lab import MLConfig
 from app.providers.dart import DartAPIError, DartClient
 from app.providers.kis import KISClient, KisAPIError
+from app.providers.krx import KRXClient
 from app.risk import CostModel, RiskConfig
 from app.scanner import ScanConfig, evidence, run_scan
 from app.services import (adopted_model, autoload_demo_if_empty, json_safe, load_demo, lookups, model_list, run_ml, save_backtest,
@@ -244,6 +245,7 @@ def home():
 def _provider_status() -> dict:
     client = KISClient()
     dart = DartClient()
+    krx = KRXClient()
     return {
         "provider": "KIS Open API", "configured": client.configured,
         "mode": "paper" if KIS_PAPER else "live_quote_read_only", "real_orders_enabled": False, "data_is_live": False,
@@ -255,9 +257,8 @@ def _provider_status() -> dict:
             {"name": "KIS WebSocket (실시간 체결)", "configured": client.configured, "implemented": False, "status": "NOT_IMPLEMENTED"},
             {"name": "OpenDART (공시 목록)", "configured": dart.configured, "implemented": True,
              "status": "READY" if dart.configured else "NOT_CONFIGURED"},
-            {"name": "KRX OPEN API", "configured": False, "implemented": False, "status": "NOT_IMPLEMENTED",
-             "note": "연구용 로컬 검증(python -m app.krxcheck)만 구현. 이용약관상 제3자 제공 금지·비상업적 이용 — "
-                     "화면·API 제공은 라이선스 확인 전까지 미구현"},
+            {"name": "KRX OPEN API (연구용 검증 전용)", "configured": krx.configured, "implemented": True, "status": "CONFIGURED_RESEARCH_ONLY" if krx.configured else "NOT_CONFIGURED",
+             "note": "인증키 상태만 확인합니다. 연구용 로컬 교차 검증(python -m app.krxcheck) 전용이며 앱 DB 적재·화면/API 시세 제공은 이용 권한 확인 전까지 금지"},
             {"name": "CSV 업로드", "configured": True, "implemented": True, "status": DataStatus.HISTORICAL.value},
         ],
     }
