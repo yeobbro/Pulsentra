@@ -4,105 +4,145 @@
 <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Pulsentra · 펄센트라</title>
 <style>
-:root{--bg:#0a0e17;--panel:#111827;--line:#263348;--text:#edf3fb;--muted:#9aacc2;--accent:#7ee7c7;--accent2:#8db6ff;--red:#ff7e8b;--yellow:#f2d28b;--green:#78e5b1;--purple:#c4a7ff;--shadow:0 20px 60px #0003}
-html{background:#0a0e17}*{box-sizing:border-box}body{margin:0;background:radial-gradient(circle at 12% -4%,#1a2e43 0,transparent 34%),var(--bg);color:var(--text);font:14px/1.5 Inter,-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo","Malgun Gothic",sans-serif}
-button,input,select,textarea{font:inherit}button{border:1px solid var(--line);color:var(--text);background:#1b283b;border-radius:10px;padding:8px 12px;cursor:pointer;transition:.15s}button:hover{border-color:var(--accent)}button.primary{background:var(--accent);color:#08221b;border-color:var(--accent);font-weight:750}button.ghost{background:transparent}button:disabled{opacity:.45;cursor:wait}
-.wrap{max-width:1480px;margin:auto;padding:22px 22px 48px}.top{display:flex;justify-content:space-between;align-items:center;gap:16px;flex-wrap:wrap;margin-bottom:14px}.brand{display:flex;gap:12px;align-items:center}
-.logo{width:42px;height:42px;border-radius:13px;background:linear-gradient(135deg,#7ee7c7,#8db6ff);display:grid;place-items:center;color:#08221b;font-weight:950;font-size:15px}
-.eyebrow{color:var(--accent);font-size:11px;letter-spacing:.14em;text-transform:uppercase;font-weight:800}.brand h1{font-size:22px;margin:2px 0 0}.brand h1 small{font-size:13px;color:var(--muted);font-weight:500;margin-left:6px}.tagline{color:var(--muted);font-size:12px}
-.top-right{display:flex;gap:8px;align-items:center;flex-wrap:wrap}.pill{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--line);padding:5px 10px;border-radius:999px;color:var(--muted);font-size:12px;white-space:nowrap}
-.notice{border:1px solid #4f452b;background:#282315;color:#f3dda7;border-radius:12px;padding:10px 14px;margin-bottom:14px;font-size:12px}
-.tabs{display:flex;gap:4px;margin-bottom:16px;border-bottom:1px solid var(--line);padding-bottom:8px;overflow:auto}.tab{border:0;background:transparent;color:var(--muted);border-radius:8px;white-space:nowrap}.tab.active{color:var(--accent);background:#153027}
-.card{border:1px solid var(--line);border-radius:16px;background:linear-gradient(150deg,#141e2e,#0e1522);box-shadow:var(--shadow)}.panel{padding:16px;min-width:0}
-.grid{display:grid;gap:14px}.g2{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}.g3{grid-template-columns:repeat(3,minmax(0,1fr))}.g4{grid-template-columns:repeat(4,minmax(0,1fr))}.g-main{grid-template-columns:minmax(0,1.55fr) minmax(320px,.85fr)}
-.panel-head{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;margin-bottom:12px;flex-wrap:wrap}.panel-title{font-size:15px;font-weight:760;margin:0}.panel-sub{font-size:11px;color:var(--muted);margin-top:3px}
-.stat{padding:15px}.stat-label{font-size:12px;color:var(--muted)}.stat-val{font-size:24px;font-weight:780;letter-spacing:-.03em;margin:5px 0 2px}.stat-sub{font-size:11px;color:var(--muted)}
-.field{display:flex;flex-direction:column;gap:4px;color:var(--muted);font-size:11px}.field input,.field select,.field textarea{background:#0b1220;border:1px solid var(--line);border-radius:9px;color:var(--text);padding:8px;width:100%;min-width:0}
-.fields{display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:9px}.check{flex-direction:row;align-items:center;gap:6px}.check input{width:auto}
-.actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px;align-items:center}
-.table-wrap{overflow:auto;border:1px solid var(--line);border-radius:12px;max-height:520px}table{width:100%;border-collapse:collapse}th{font-size:10px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);font-weight:700;background:#101a29;position:sticky;top:0;cursor:pointer}
-td,th{padding:9px 10px;text-align:right;border-bottom:1px solid #202d40;white-space:nowrap}th:first-child,td:first-child{text-align:left}td.l,th.l{text-align:left}tbody tr:hover{background:#1a2b3b}tr.click{cursor:pointer}
-.positive{color:var(--green)}.negative{color:var(--red)}.muted{color:var(--muted)}.help{font-size:11px;color:var(--muted);line-height:1.7}.small{font-size:11px}
-.badge{display:inline-block;padding:2px 7px;border-radius:7px;font-size:10px;font-weight:800;letter-spacing:.04em;border:1px solid}
-.st-LIVE{color:#78e5b1;border-color:#2c6a50;background:#12372e}.st-DELAYED{color:#8db6ff;border-color:#2f4a7a;background:#14223d}.st-HISTORICAL{color:#c4a7ff;border-color:#4b3b75;background:#211a37}.st-DEMO{color:#f2d28b;border-color:#6a5a2c;background:#2d2615}.st-STALE{color:#ffb37e;border-color:#7a4f2c;background:#2f1f13}.st-ERROR{color:#ff7e8b;border-color:#7a2c38;background:#33141a}.st-AVAILABLE{color:#78e5b1;border-color:#2c6a50;background:#12372e}.st-LIMITED{color:#f2d28b;border-color:#6a5a2c;background:#2d2615}.st-PLANNED{color:#9aacc2;border-color:#3b4a63;background:#162132}.st-PASS{color:#78e5b1;border-color:#2c6a50;background:#12372e}.st-WATCH{color:#f2d28b;border-color:#6a5a2c;background:#2d2615}.st-FAIL{color:#ff7e8b;border-color:#7a2c38;background:#33141a}.st-INSUFFICIENT_DATA{color:#c4a7ff;border-color:#4b3b75;background:#211a37}
-.libcard{padding:14px;cursor:pointer}.libcard:hover{border-color:var(--accent)}.libcard.sel{border-color:var(--accent2)}.libcard h3{margin:4px 0;font-size:14px}
-.list{margin:6px 0 0;padding-left:16px;font-size:12px;line-height:1.7}.list.pos li::marker{color:var(--green)}.list.neg li::marker{color:var(--red)}
-canvas{width:100%;display:block;background:#0b1220;border:1px solid var(--line);border-radius:12px}
-.kv{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:8px}.kv div{padding:9px;border-radius:10px;background:#101a29;border:1px solid #202d40}.kv label{display:block;color:var(--muted);font-size:10px}.kv b{display:block;margin-top:2px;font-size:14px}
-.warn{border:1px solid #6a5a2c;background:#2a2412;color:#f3dda7;border-radius:10px;padding:8px 10px;font-size:12px;margin-top:8px}.err{border-color:#7a2c38;background:#33141a;color:#ffc2c9}
-.hidden{display:none!important}select.pill,input.pill{background:#0b1220;color:var(--text)}.toast{position:fixed;bottom:18px;left:50%;transform:translateX(-50%);background:#eafcf6;color:#0b2e23;padding:10px 14px;border-radius:11px;font-weight:700;z-index:10;max-width:calc(100% - 28px)}
-details summary{cursor:pointer;color:var(--accent2);font-size:12px}pre{white-space:pre-wrap;word-break:break-word;font:11px/1.6 ui-monospace,monospace;color:var(--muted)}
-.foot{margin-top:16px;display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;color:#74859b;font-size:10px}
-@media(max-width:1000px){.g-main,.g2{grid-template-columns:1fr}.g4{grid-template-columns:repeat(2,minmax(0,1fr))}.g3{grid-template-columns:1fr}}
-@media(max-width:560px){.wrap{padding:14px 12px 30px}.g4{grid-template-columns:1fr 1fr}.stat-val{font-size:20px}}
-
-/* Pulsentra product UI refresh — layered overrides, preserving existing IDs and interactions */
+/* Pulsentra — Binance-inspired dark theme (see docs/DESIGN.md). Single yellow accent, flat color-block surfaces, green/red for direction only. */
 :root{
- --bg:#f4f7fb;--panel:#ffffff;--line:#e4eaf2;--text:#17243a;--muted:#718096;
- --accent:#147d75;--accent2:#4169e1;--red:#d94c5c;--yellow:#a87516;--green:#16845b;
- --purple:#7654b8;--shadow:0 8px 28px rgba(25,45,75,.055);
+ color-scheme:dark;
+ --bg:#0b0e11;--panel:#1e2329;--panel2:#2b3139;--line:#2b3139;--line2:#474d57;
+ --text:#eaecef;--strong:#ffffff;--muted:#707a8a;--muted2:#929aa5;
+ --accent:#fcd535;--accent-active:#f0b90b;--on-accent:#181a20;
+ --accent2:#fcd535;--green:#0ecb81;--red:#f6465d;--yellow:#fcd535;--purple:#c99bff;
+ --chart:#161a1e;--shadow:none;
+ --font:Inter,"BinanceNova",-apple-system,BlinkMacSystemFont,"Pretendard","Apple SD Gothic Neo","Malgun Gothic","Segoe UI",Roboto,sans-serif;
+ --num:"BinancePlex","IBM Plex Sans",Inter,-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo",sans-serif;
 }
-html{background:var(--bg)}
-body{background:var(--bg);color:var(--text);font-family:Inter,-apple-system,BlinkMacSystemFont,"Pretendard","Apple SD Gothic Neo","Malgun Gothic",sans-serif;letter-spacing:-.012em}
-.wrap{max-width:1600px;padding:26px 30px 56px}
-.top{position:sticky;top:0;z-index:8;margin:-26px -30px 22px;padding:17px 30px;background:rgba(255,255,255,.92);backdrop-filter:blur(16px);border-bottom:1px solid var(--line)}
-.logo{border-radius:12px;background:#e4f5f1;color:#11665f;border:1px solid #cce9e3}
-.eyebrow{color:#168477;letter-spacing:.12em}
-.brand h1{font-size:24px;letter-spacing:-.045em;color:#14233a}
-.brand h1 small{color:#718096}
-.tagline{color:#77869a}
-.pill{background:#f8fafc;border-color:#e2e8f0;color:#607086}
-.notice{border:1px solid #dbe7f4;background:#eff5fb;color:#53677f;border-radius:12px;padding:12px 16px}
-.tabs{gap:6px;padding:0 0 12px;border-bottom:1px solid #e4eaf2}
-.tab{padding:9px 13px;color:#64748b;border:1px solid transparent;border-radius:10px;font-weight:650}
-.tab:hover{background:#eef3f8;color:#263b57}
-.tab.active{background:#e8f5f2;color:#126e64;border:1px solid #cfe9e3}
-.card{background:#fff;border:1px solid #e6ebf2;border-radius:16px;box-shadow:0 5px 20px rgba(22,38,62,.045)}
-.panel{padding:20px}
-.panel-title{font-size:15px;font-weight:750;letter-spacing:-.025em;color:#1d2c43}
-.panel-sub{font-size:12px;color:#8390a3}
-.stat{padding:18px 20px;min-height:112px}
-.stat-label{color:#718096;font-weight:600}
-.stat-val{font-size:27px;color:#172b46;letter-spacing:-.045em}
-.stat-sub{color:#8491a3}
-button{background:#fff;border-color:#dce4ee;color:#34445d;border-radius:9px;font-weight:650}
-button:hover{border-color:#8abbb2;background:#f6fbfa}
-button.primary{background:#147d75;border-color:#147d75;color:#fff}
-button.primary:hover{background:#106b64}
-button.ghost{background:transparent}
-.field{color:#718096;font-weight:600}
-.field input,.field select,.field textarea{background:#fff;border-color:#dfe6ef;color:#1e2e45;border-radius:9px;padding:9px 10px}
-.field input:focus,.field select:focus,.field textarea:focus,input:focus,select:focus{outline:2px solid rgba(20,125,117,.15);border-color:#5ba99d}
-.table-wrap{border-color:#e6ebf2;border-radius:12px;background:#fff}
-th{background:#f7f9fc;color:#748399;border-bottom-color:#e8edf3}
-td,th{border-bottom-color:#edf1f5}
-tbody tr:hover{background:#f6faf9}
-.kv div{background:#f8fafc;border-color:#e8edf3}
-.kv label{color:#7b899c}
-.kv b{color:#20324b}
-canvas{background:#101a2b;border:1px solid #dfe6ef;border-radius:12px}
-.help,.muted{color:#748399}
-.badge{border-radius:6px}
-.st-LIVE{color:#14734f;border-color:#bfe5d2;background:#eaf8f0}
-.st-DELAYED{color:#315eaa;border-color:#cbdaf5;background:#eef4ff}
-.st-HISTORICAL{color:#65469d;border-color:#ddd1f4;background:#f5f0fc}
-.st-DEMO{color:#916512;border-color:#f0dfb2;background:#fff8e6}
-.st-STALE{color:#a45c22;border-color:#f0d2b6;background:#fff4e9}
-.st-ERROR{color:#b33e4e;border-color:#f1c7ce;background:#fff0f2}
-.st-AVAILABLE,.st-PASS{color:#14734f;border-color:#bfe5d2;background:#eaf8f0}
-.st-LIMITED,.st-WATCH{color:#916512;border-color:#f0dfb2;background:#fff8e6}
-.st-PLANNED,.st-INSUFFICIENT_DATA{color:#65469d;border-color:#ddd1f4;background:#f5f0fc}
-.st-FAIL{color:#b33e4e;border-color:#f1c7ce;background:#fff0f2}
-.warn{border-color:#f0dfb2;background:#fff8e6;color:#805d18}
-.err{border-color:#f1c7ce;background:#fff0f2;color:#a73545}
-.libcard:hover{border-color:#72b7aa}
-.libcard.sel{border-color:#4169e1}
-details summary{color:#4169e1}
-.foot{color:#8996a8}
-.toast{box-shadow:0 8px 30px rgba(20,40,70,.15)}
-@media(max-width:1000px){.top{position:relative;margin:-14px -12px 18px;padding:14px 12px}.wrap{padding:14px 12px 30px}}
-@media(max-width:560px){.panel{padding:15px}.stat{padding:14px}.stat-val{font-size:22px}.tabs{padding-bottom:9px}}
+html{background:var(--bg)}*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font:14px/1.5 var(--font);-webkit-font-smoothing:antialiased}
+::selection{background:rgba(252,213,53,.3)}
+::-webkit-scrollbar{width:8px;height:8px}::-webkit-scrollbar-thumb{background:#2b3139;border-radius:8px}::-webkit-scrollbar-thumb:hover{background:#474d57}::-webkit-scrollbar-track{background:transparent}
 
+/* buttons */
+button,input,select,textarea{font:inherit}
+button{border:1px solid transparent;color:var(--text);background:var(--panel2);border-radius:6px;padding:0 16px;height:36px;cursor:pointer;font-weight:600;font-size:14px;line-height:1;transition:background .12s,color .12s,border-color .12s}
+button:hover{background:#363c45}
+button:active{background:#474d57}
+button.primary{background:var(--accent);color:var(--on-accent);border-color:var(--accent)}
+button.primary:hover{background:#fcdd5f}
+button.primary:active{background:var(--accent-active);border-color:var(--accent-active)}
+button.ghost{background:transparent;border-color:var(--line2);color:var(--text)}
+button.ghost:hover{border-color:var(--accent);color:var(--accent);background:transparent}
+button:disabled{opacity:.45;cursor:wait}
+button.primary:disabled{background:#3a3a1f;border-color:#3a3a1f;color:var(--muted);opacity:1}
+button:focus-visible{outline:none;box-shadow:0 0 0 2px rgba(252,213,53,.5)}
+
+/* layout */
+.wrap{max-width:1600px;margin:auto;padding:0 24px 48px}
+.top{position:sticky;top:0;z-index:8;display:flex;justify-content:space-between;align-items:center;gap:16px;flex-wrap:wrap;min-height:64px;margin:0 -24px;padding:10px 24px;background:var(--bg);border-bottom:1px solid var(--line)}
+.brand{display:flex;gap:12px;align-items:center}
+.logo{width:36px;height:36px;border-radius:8px;background:var(--accent);color:var(--on-accent);display:grid;place-items:center;font-weight:800;font-size:14px;letter-spacing:-.02em}
+.eyebrow{color:var(--accent);font-size:12px;letter-spacing:.04em;text-transform:uppercase;font-weight:600}
+.brand .eyebrow{color:var(--muted);font-size:11px;letter-spacing:.08em}
+.brand h1{font-size:22px;line-height:1.15;margin:1px 0 0;font-weight:700;letter-spacing:-.02em;color:var(--accent)}
+.brand h1 small{font-size:13px;color:var(--muted2);font-weight:500;margin-left:8px;letter-spacing:0}
+.tagline{color:var(--muted);font-size:12px}
+.top-right{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.pill{display:inline-flex;align-items:center;gap:6px;height:32px;border:1px solid var(--line);background:var(--panel);padding:0 12px;border-radius:6px;color:var(--muted2);font-size:12px;font-weight:500;white-space:nowrap}
+.pill select{color:var(--strong)!important;font-weight:600;cursor:pointer;outline:none}
+select.pill,input.pill{background:var(--panel2)!important;color:var(--text)!important;border-color:transparent;font-size:13px;outline:none}
+select.pill:hover,input.pill:hover{border-color:var(--line2)}
+select.pill:focus,input.pill:focus{border-color:var(--accent)}
+input.pill::placeholder{color:var(--muted)}
+option{background:var(--panel);color:var(--text)}
+.top .ghost{width:36px;padding:0;font-size:16px}
+
+.notice{margin:16px 0 0;border:1px solid rgba(252,213,53,.18);background:rgba(252,213,53,.06);color:var(--muted2);border-radius:8px;padding:10px 16px;font-size:12px}
+.notice b{color:var(--accent);font-weight:600}
+
+/* tabs — text tabs with yellow underline */
+.tabs{display:flex;gap:28px;margin:4px 0 20px;border-bottom:1px solid var(--line);overflow:auto}
+.tab{position:relative;height:48px;padding:0 2px;border:0;border-radius:0;background:transparent;color:var(--muted2);font-weight:500;white-space:nowrap}
+.tab:hover{background:transparent;color:var(--strong)}
+.tab.active{color:var(--strong);font-weight:600;background:transparent}
+.tab.active::after{content:"";position:absolute;left:50%;bottom:0;transform:translateX(-50%);width:24px;height:3px;border-radius:2px;background:var(--accent)}
+
+/* surfaces */
+.card{border:0;border-radius:12px;background:var(--panel);box-shadow:none}
+.panel{padding:24px;min-width:0}
+.grid{display:grid;gap:16px}.g2{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}.g3{grid-template-columns:repeat(3,minmax(0,1fr))}.g4{grid-template-columns:repeat(4,minmax(0,1fr))}.g-main{grid-template-columns:minmax(0,1.55fr) minmax(320px,.85fr)}
+.panel-head{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-bottom:16px;flex-wrap:wrap}
+.panel-title{font-size:16px;font-weight:600;margin:0;color:var(--strong);letter-spacing:-.01em}
+.panel-sub{font-size:12px;color:var(--muted);margin-top:4px}
+
+/* stats — big tabular numbers */
+.stat{padding:20px 24px;min-height:116px}
+.stat-label{font-size:12px;color:var(--muted);font-weight:500}
+.stat-val{font-family:var(--num);font-variant-numeric:tabular-nums;font-size:28px;line-height:1.15;font-weight:700;letter-spacing:-.02em;color:var(--strong);margin:8px 0 4px}
+.stat-sub{font-size:12px;color:var(--muted)}
+#tab-dash .grid.g4 .card.stat:first-child .stat-val{color:var(--accent)}
+
+/* forms */
+.field{display:flex;flex-direction:column;gap:6px;color:var(--muted);font-size:12px;font-weight:500}
+.field input,.field select,.field textarea{background:var(--panel2);border:1px solid transparent;border-radius:6px;color:var(--text);padding:0 12px;height:40px;width:100%;min-width:0;font-family:var(--num);font-variant-numeric:tabular-nums;transition:border-color .12s}
+.field textarea{height:auto;padding:10px 12px}
+.field input:hover,.field select:hover,.field textarea:hover{border-color:var(--line2)}
+.field input:focus,.field select:focus,.field textarea:focus,input:focus,select:focus{outline:none;border-color:var(--accent)}
+.field input[type=date]::-webkit-calendar-picker-indicator{filter:invert(.7)}
+.fields{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px 12px}
+.check{flex-direction:row;align-items:center;gap:8px;color:var(--text);align-self:end;height:40px}
+.check input{width:16px!important;height:16px!important;accent-color:var(--accent);padding:0}
+.actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:16px;align-items:center}
+
+/* tables — markets-row style */
+.table-wrap{overflow:auto;border:0;border-radius:8px;max-height:520px;background:transparent}
+table{width:100%;border-collapse:collapse}
+th{font-size:12px;letter-spacing:0;text-transform:none;color:var(--muted);font-weight:500;background:var(--panel);position:sticky;top:0;cursor:pointer;z-index:1}
+th:hover{color:var(--muted2)}
+td,th{padding:12px 12px;text-align:right;border-bottom:1px solid var(--line);white-space:nowrap}
+td{font-family:var(--num);font-variant-numeric:tabular-nums;font-weight:500;color:var(--text)}
+th:first-child,td:first-child{text-align:left}td.l,th.l{text-align:left}
+td:first-child{color:var(--strong);font-weight:600}
+tbody tr:last-child td{border-bottom:0}
+tbody tr:hover{background:var(--panel2)}tr.click{cursor:pointer}
+
+.sig{white-space:normal;min-width:300px;font:12px/1.5 var(--font);color:var(--muted2);font-weight:400}
+.sig span{display:block;position:relative;padding-left:12px}
+.sig span::before{content:"";position:absolute;left:0;top:7px;width:5px;height:5px;border-radius:50%;background:var(--green)}
+.sig.neg span::before{background:var(--red)}
+/* semantics */
+.positive{color:var(--green)}.negative{color:var(--red)}.muted{color:var(--muted)}.help{font-size:13px;color:var(--muted2);line-height:1.7}.small{font-size:12px}
+.badge{display:inline-block;padding:2px 6px;border-radius:4px;font-size:11px;font-weight:600;letter-spacing:.02em;border:1px solid transparent;font-family:var(--font)}
+.st-LIVE,.st-AVAILABLE,.st-PASS{color:#0ecb81;background:rgba(14,203,129,.12)}
+.st-DELAYED{color:#3b82f6;background:rgba(59,130,246,.14)}
+.st-HISTORICAL,.st-PLANNED,.st-INSUFFICIENT_DATA{color:#929aa5;background:rgba(146,154,165,.14)}
+.st-DEMO,.st-LIMITED,.st-WATCH{color:#fcd535;background:rgba(252,213,53,.12)}
+.st-STALE{color:#f0b90b;background:rgba(240,185,11,.10)}
+.st-ERROR,.st-FAIL{color:#f6465d;background:rgba(246,70,93,.12)}
+
+/* strategy cards */
+.libcard{padding:20px;cursor:pointer;background:var(--panel2);border:1px solid transparent;border-radius:8px;transition:border-color .12s}
+.libcard:hover{border-color:var(--line2)}
+.libcard.sel{border-color:var(--accent)}
+.libcard h3{margin:6px 0;font-size:15px;font-weight:600;color:var(--strong)}
+
+.list{margin:6px 0 0;padding-left:18px;font-size:13px;line-height:1.75}.list.pos li::marker{color:var(--green)}.list.neg li::marker{color:var(--red)}
+canvas{width:100%;display:block;background:var(--chart);border:1px solid var(--line);border-radius:8px}
+
+/* key-value tiles */
+.kv{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:8px}
+.kv div{padding:12px;border-radius:8px;background:var(--panel2);border:0}
+.kv label{display:block;color:var(--muted);font-size:12px}
+.kv b{display:block;margin-top:4px;font-size:16px;font-weight:600;color:var(--strong);font-family:var(--num);font-variant-numeric:tabular-nums}
+
+.warn{border:1px solid rgba(252,213,53,.25);background:rgba(252,213,53,.07);color:#f0d77a;border-radius:8px;padding:10px 12px;font-size:12px;margin-top:8px}
+.err{border-color:rgba(246,70,93,.3);background:rgba(246,70,93,.08);color:#ff8a9a}
+.hidden{display:none!important}
+.toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:var(--panel2);color:var(--strong);border-left:3px solid var(--accent);padding:12px 16px;border-radius:8px;font-weight:500;z-index:10;max-width:calc(100% - 28px);box-shadow:0 8px 32px rgba(0,0,0,.5)}
+details summary{cursor:pointer;color:var(--accent);font-size:13px;font-weight:500}
+pre{white-space:pre-wrap;word-break:break-word;font:12px/1.6 ui-monospace,"JetBrains Mono",monospace;color:var(--muted2)}
+ol.help{padding-left:20px}ol.help li::marker{color:var(--accent);font-weight:700;font-family:var(--num)}
+.foot{margin-top:32px;padding-top:16px;border-top:1px solid var(--line);display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;color:var(--muted);font-size:12px}
+
+@media(max-width:1000px){.g-main,.g2{grid-template-columns:1fr}.g4{grid-template-columns:repeat(2,minmax(0,1fr))}.g3{grid-template-columns:1fr}.top{position:relative}}
+@media(max-width:560px){.wrap{padding:0 12px 30px}.top{margin:0 -12px;padding:10px 12px}.g4{grid-template-columns:1fr 1fr}.panel{padding:16px}.stat{padding:16px}.stat-val{font-size:22px}.tabs{gap:20px}}
 </style>
 </head>
 <body><div class="wrap">
@@ -155,7 +195,7 @@ details summary{color:#4169e1}
       <label class="field check"><input id="sBrk" type="checkbox"> 20일 고점 돌파</label>
       <label class="field check"><input id="sAll" type="checkbox"> 미충족 종목도 표시</label>
     </div>
-    <div class="actions"><button class="primary" id="scanBtn">검색</button><input id="sFilter" placeholder="결과 내 종목 필터" class="pill" style="background:#0b1220;color:var(--text)"><span id="scanNote" class="help"></span></div>
+    <div class="actions"><button class="primary" id="scanBtn">검색</button><input id="sFilter" placeholder="결과 내 종목 필터" class="pill" ><span id="scanNote" class="help"></span></div>
     <div class="table-wrap" style="margin-top:12px"><table><thead><tr>
       <th data-k="symbol">종목</th><th data-k="date">기준일</th><th data-k="close">종가</th><th data-k="ret_20">20일 등락</th><th data-k="volume_20_sum">최근20 거래량</th><th data-k="volume_prev20_sum">직전20 거래량</th>
       <th data-k="volume_ratio_20">거래량 배수</th><th data-k="turnover_ratio_20">거래대금 배수</th><th data-k="rel_ret_20">상대강도(20일)</th><th data-k="cmf_20">CMF20</th><th data-k="atr_pct_14">ATR%</th>
@@ -169,7 +209,7 @@ details summary{color:#4169e1}
   <div class="grid g-main">
     <div class="card panel">
       <div class="panel-head"><div><div class="eyebrow" id="stSym">종목 미선택</div><h2 class="panel-title" id="stTitle">스캐너에서 종목을 선택하거나 코드를 입력하세요.</h2><div class="panel-sub" id="stSub"></div></div>
-        <div class="actions" style="margin:0"><input id="stInput" class="pill" placeholder="종목코드" style="background:#0b1220;color:var(--text);width:110px"><button id="stGo">열기</button><button id="stSync" class="ghost">KIS 일봉 동기화</button><button id="stQuote" class="ghost">현재가</button></div></div>
+        <div class="actions" style="margin:0"><input id="stInput" class="pill" placeholder="종목코드" style="width:110px"><button id="stGo">열기</button><button id="stSync" class="ghost">KIS 일봉 동기화</button><button id="stQuote" class="ghost">현재가</button></div></div>
       <canvas id="candle" width="1100" height="420" style="height:340px"></canvas>
       <div class="help" id="chartLegend">캔들·거래량·20/60일선·볼린저밴드. 점선: 참고 손절(빨강)/익절(초록) — 종가 기준, 실제 진입은 다음 날 시가.</div>
       <div class="kv" id="stKv" style="margin-top:10px"></div>
@@ -357,7 +397,7 @@ function scanParams(){return {volume_multiple:+$('sVol').value,return_min:+$('sR
 function applyScanParams(p){$('sVol').value=p.volume_multiple??3;$('sRetMin').value=p.return_min??-0.03;$('sRetMax').value=p.return_max??0.03;$('sTurn').value=p.turnover_multiple??1.5;$('sLiq').value=p.min_avg_turnover??0;$('sClv').checked=!!p.require_positive_clv;$('sBrk').checked=!!p.require_breakout}
 async function runScan(){$('scanBtn').disabled=true;try{const r=await post(`/api/scan?market=${state.market}&include_all=${$('sAll').checked}`,scanParams());state.scanRows=r.rows;$('scanNote').textContent=`평가 ${r.evaluated}종목 · 표시 ${r.rows.length} · 이력 부족 ${r.skipped_insufficient_history.length} · 벤치마크 ${r.benchmark_loaded?'있음':'없음(상대강도 미확인)'}`;$('scanMethod').textContent=r.method+'\n\n'+Object.entries(r.indicator_specs||{}).map(([k,v])=>`${k}: ${v}`).join('\n');renderScan()}catch(e){toast(e.message)}finally{$('scanBtn').disabled=false}}
 function renderScan(){const f=$('sFilter').value.trim().toUpperCase();let rows=state.scanRows.filter(r=>!f||r.symbol.includes(f)||(r.name||'').toUpperCase().includes(f));const {k,d}=state.sort;rows=[...rows].sort((a,b)=>{const x=a[k],y=b[k];if(x===y)return 0;if(x===null||x===undefined)return 1;if(y===null||y===undefined)return -1;return (x>y?1:-1)*d});
-$('scanBody').innerHTML=rows.length?rows.map((r,i)=>`<tr class="click" data-s="${esc(r.symbol)}" data-m="${esc(r.market)}" style="${r.passes?'':'opacity:.55'}"><td><b>${esc(r.symbol)}</b><div class="small muted">${esc(r.name||'')}</div></td><td>${esc(r.date)}</td><td>${fmt(r.close,0)}</td><td>${pct(r.ret_20)}</td><td>${fmt(r.volume_20_sum,0)}</td><td>${fmt(r.volume_prev20_sum,0)}</td><td>${fmt(r.volume_ratio_20)}x</td><td>${fmt(r.turnover_ratio_20)}x</td><td>${pct(r.rel_ret_20)}</td><td>${fmt(r.cmf_20,3)}</td><td>${pct(r.atr_pct_14)}</td><td class="l small positive" style="white-space:normal;min-width:180px">${r.positives.map(esc).join('<br>')}</td><td class="l small negative" style="white-space:normal;min-width:180px">${r.negatives.map(esc).join('<br>')||'—'}</td><td>${fmt(r.score,0)}</td><td class="l">${badge(r.data_status?.status)}</td></tr>`).join(''):`<tr><td colspan="15"><div class="help" style="padding:14px">조건에 맞는 종목이 없습니다. 데이터 센터에서 데이터를 적재하세요.</div></td></tr>`;
+$('scanBody').innerHTML=rows.length?rows.map((r,i)=>`<tr class="click" data-s="${esc(r.symbol)}" data-m="${esc(r.market)}" style="${r.passes?'':'opacity:.55'}"><td><b>${esc(r.symbol)}</b><div class="small muted">${esc(r.name||'')}</div></td><td>${esc(r.date)}</td><td>${fmt(r.close,0)}</td><td>${pct(r.ret_20)}</td><td>${fmt(r.volume_20_sum,0)}</td><td>${fmt(r.volume_prev20_sum,0)}</td><td>${fmt(r.volume_ratio_20)}x</td><td>${fmt(r.turnover_ratio_20)}x</td><td>${pct(r.rel_ret_20)}</td><td>${fmt(r.cmf_20,3)}</td><td>${pct(r.atr_pct_14)}</td><td class="l sig pos">${r.positives.map(x=>'<span>'+esc(x)+'</span>').join('')}</td><td class="l sig neg">${r.negatives.map(x=>'<span>'+esc(x)+'</span>').join('')||'—'}</td><td>${fmt(r.score,0)}</td><td class="l">${badge(r.data_status?.status)}</td></tr>`).join(''):`<tr><td colspan="15"><div class="help" style="padding:14px">조건에 맞는 종목이 없습니다. 데이터 센터에서 데이터를 적재하세요.</div></td></tr>`;
 $('scanBody').querySelectorAll('tr[data-s]').forEach(tr=>tr.onclick=()=>openStock(tr.dataset.m,tr.dataset.s))}
 document.querySelectorAll('#tab-scan th[data-k]').forEach(th=>th.onclick=()=>{const k=th.dataset.k;state.sort={k,d:state.sort.k===k?-state.sort.d:-1};renderScan()});
 async function loadSavedScans(){const s=await api('/api/scans');$('savedScans').innerHTML='<option value="">저장된 조건</option>'+s.map(x=>`<option value='${esc(JSON.stringify(x.params))}'>${esc(x.name)}</option>`).join('')}
@@ -375,11 +415,11 @@ $('stQuality').innerHTML=d.quality_issues.length?d.quality_issues.map(q=>`<div>$
 drawCandles($('candle'),h.bars,d.levels)}catch(e){toast(e.message)}}
 function fit(cv){const w=Math.max(300,Math.round(cv.clientWidth)),h=Math.max(150,Math.round(cv.clientHeight));if(cv.width!==w||cv.height!==h){cv.width=w;cv.height=h}}
 function drawCandles(cv,bars,levels){fit(cv);const ctx=cv.getContext('2d');ctx.clearRect(0,0,cv.width,cv.height);if(!bars||!bars.length)return;const W=cv.width,H=cv.height,pad={l:60,r:10,t:10},ph=H*0.72,vh=H*0.2;const lo=Math.min(...bars.map(b=>b.low).concat(levels?[levels.stop]:[]).filter(Number.isFinite)),hi=Math.max(...bars.map(b=>b.high).concat(levels?[levels.target]:[]).filter(Number.isFinite));const y=v=>pad.t+(hi-v)/(hi-lo||1)*(ph-pad.t);const bw=(W-pad.l-pad.r)/bars.length;const x=i=>pad.l+i*bw+bw/2;
-ctx.strokeStyle='#1d2a3c';ctx.fillStyle='#9aacc2';ctx.font='11px sans-serif';for(let k=0;k<5;k++){const v=lo+(hi-lo)*k/4;ctx.beginPath();ctx.moveTo(pad.l,y(v));ctx.lineTo(W-pad.r,y(v));ctx.stroke();ctx.fillText(Math.round(v).toLocaleString(),4,y(v)+4)}
-const vmax=Math.max(...bars.map(b=>b.volume));bars.forEach((b,i)=>{const up=b.close>=b.open;ctx.strokeStyle=ctx.fillStyle=up?'#78e5b1':'#ff7e8b';ctx.beginPath();ctx.moveTo(x(i),y(b.high));ctx.lineTo(x(i),y(b.low));ctx.stroke();const t=y(Math.max(b.open,b.close)),bt=y(Math.min(b.open,b.close));ctx.fillRect(x(i)-bw*0.35,t,bw*0.7,Math.max(1,bt-t));ctx.globalAlpha=.45;const vhgt=(b.volume/vmax)*vh;ctx.fillRect(x(i)-bw*0.35,H-vhgt-2,bw*0.7,vhgt);ctx.globalAlpha=1;if(b.quality_flags){ctx.fillStyle='#f2d28b';ctx.fillRect(x(i)-1,pad.t,2,4)}});
-const line=(k,c,dash)=>{ctx.strokeStyle=c;ctx.setLineDash(dash||[]);ctx.lineWidth=1.4;ctx.beginPath();let s=false;bars.forEach((b,i)=>{if(!Number.isFinite(b[k]))return;s?ctx.lineTo(x(i),y(b[k])):ctx.moveTo(x(i),y(b[k]));s=true});ctx.stroke();ctx.setLineDash([]);ctx.lineWidth=1};line('ma20','#8db6ff');line('ma60','#c4a7ff');line('bb_upper','#3b4a63',[3,3]);line('bb_lower','#3b4a63',[3,3]);
-if(levels){[[levels.stop,'#ff7e8b','손절'],[levels.target,'#78e5b1','익절'],[levels.reference_close,'#9aacc2','기준']].forEach(([v,c,l])=>{ctx.strokeStyle=c;ctx.setLineDash([6,4]);ctx.beginPath();ctx.moveTo(pad.l,y(v));ctx.lineTo(W-pad.r,y(v));ctx.stroke();ctx.setLineDash([]);ctx.fillStyle=c;ctx.fillText(l+' '+Math.round(v).toLocaleString(),W-140,y(v)-4)})}
-ctx.fillStyle='#9aacc2';ctx.fillText(bars[0].date,pad.l,H-vh-6);ctx.fillText(bars[bars.length-1].date,W-90,H-vh-6)}
+ctx.strokeStyle='#2b3139';ctx.fillStyle='#848e9c';ctx.font='11px Inter,-apple-system,sans-serif';for(let k=0;k<5;k++){const v=lo+(hi-lo)*k/4;ctx.beginPath();ctx.moveTo(pad.l,y(v));ctx.lineTo(W-pad.r,y(v));ctx.stroke();ctx.fillText(Math.round(v).toLocaleString(),4,y(v)+4)}
+const vmax=Math.max(...bars.map(b=>b.volume));bars.forEach((b,i)=>{const up=b.close>=b.open;ctx.strokeStyle=ctx.fillStyle=up?'#0ecb81':'#f6465d';ctx.beginPath();ctx.moveTo(x(i),y(b.high));ctx.lineTo(x(i),y(b.low));ctx.stroke();const t=y(Math.max(b.open,b.close)),bt=y(Math.min(b.open,b.close));ctx.fillRect(x(i)-bw*0.35,t,bw*0.7,Math.max(1,bt-t));ctx.globalAlpha=.45;const vhgt=(b.volume/vmax)*vh;ctx.fillRect(x(i)-bw*0.35,H-vhgt-2,bw*0.7,vhgt);ctx.globalAlpha=1;if(b.quality_flags){ctx.fillStyle='#fcd535';ctx.fillRect(x(i)-1,pad.t,2,4)}});
+const line=(k,c,dash)=>{ctx.strokeStyle=c;ctx.setLineDash(dash||[]);ctx.lineWidth=1.4;ctx.beginPath();let s=false;bars.forEach((b,i)=>{if(!Number.isFinite(b[k]))return;s?ctx.lineTo(x(i),y(b[k])):ctx.moveTo(x(i),y(b[k]));s=true});ctx.stroke();ctx.setLineDash([]);ctx.lineWidth=1};line('ma20','#fcd535');line('ma60','#c99bff');line('bb_upper','#474d57',[3,3]);line('bb_lower','#474d57',[3,3]);
+if(levels){[[levels.stop,'#f6465d','손절'],[levels.target,'#0ecb81','익절'],[levels.reference_close,'#848e9c','기준']].forEach(([v,c,l])=>{ctx.strokeStyle=c;ctx.setLineDash([6,4]);ctx.beginPath();ctx.moveTo(pad.l,y(v));ctx.lineTo(W-pad.r,y(v));ctx.stroke();ctx.setLineDash([]);ctx.fillStyle=c;ctx.fillText(l+' '+Math.round(v).toLocaleString(),W-140,y(v)-4)})}
+ctx.fillStyle='#848e9c';ctx.fillText(bars[0].date,pad.l,H-vh-6);ctx.fillText(bars[bars.length-1].date,W-90,H-vh-6)}
 
 // ---------- strategy lab
 function n(v){return v===''||v===null?null:Number(v)}
@@ -393,15 +433,15 @@ function renderBT(r){const m=r.metrics,b=r.benchmark,ra=r.random_baseline;const 
 const kv=[['기간',`${r.period.start||'—'} ~ ${r.period.end||'—'}`],['총수익률',pct(m.total_return)],['연환산',m.cagr===null?'<span class="muted">180일 미만</span>':pct(m.cagr)],['최대 낙폭',pct(m.max_drawdown)],['변동성(연)',pct(m.volatility)],['샤프',fmt(m.sharpe)],['거래 수',m.trades],['승률 (95% CI)',`${num(m.win_rate)?(m.win_rate*100).toFixed(1)+'%':'—'}<div class="small muted">${ci(m.win_rate_ci95)}</div>`],['평균 이익',pct(m.avg_win)],['평균 손실',pct(m.avg_loss)],['거래당 기대값',`${fmt(m.expectancy_r)}R<div class="small muted">${ci(m.expectancy_r_ci95,false)}</div>`],['이익요인',m.profit_factor===null?'<span class="muted">계산 불가</span>':fmt(m.profit_factor)],['최대 연속 손실',m.max_consecutive_losses],['평균 보유일',fmt(m.avg_holding_days,1)],['총 비용',fmt(m.total_costs,0)],['시장 대비 초과',pct(b.excess_total_return)]];
 $('btKv').innerHTML=kv.map(([a,v])=>`<div><label>${a}</label><b>${v}</b></div>`).join('');
 $('btBaselines').innerHTML=`<div>벤치마크: ${esc(b.label)} ${pct(b.total_return)} · MDD ${pct(b.max_drawdown)}</div>`+(ra?`<div>무작위 진입 ${ra.runs}회: 평균 ${pct(ra.total_return_mean)}, 5~95% [${(ra.total_return_p05*100).toFixed(1)}%, ${(ra.total_return_p95*100).toFixed(1)}%] · 전략 백분위 <b>${(ra.strategy_percentile*100).toFixed(0)}%</b><br>${esc(ra.note)}</div>`:'<div>무작위 기준: 신호가 없어 계산하지 않음</div>')+`<div>신호 ${m.signals}개 · 건너뛴 신호 ${esc(JSON.stringify(m.skipped_signals))}</div><div>출처 ${esc(r.data.sources.join(', '))} · 품질 경고 바 ${r.data.flagged_bars_in_input} · 경고 바를 쓴 거래 ${m.trades_with_quality_flags} · ${esc(r.data.universe_metadata.note)}</div>`;
-lineChart($('eqChart'),[{pts:r.equity_curve.map(p=>[p.date,p.equity]),c:'#7ee7c7',l:'전략'},{pts:r.benchmark_curve.map(p=>[p.date,p.equity]),c:'#8db6ff',l:'벤치마크'}]);$('eqLegend').innerHTML='<span class="positive">━ 전략(비용 반영)</span> · <span style="color:#8db6ff">━ '+esc(b.label)+'</span>';
-lineChart($('ddChart'),[{pts:r.equity_curve.map(p=>[p.date,p.drawdown]),c:'#ff7e8b',l:'낙폭',fill:true}],true);
+lineChart($('eqChart'),[{pts:r.equity_curve.map(p=>[p.date,p.equity]),c:'#fcd535',l:'전략'},{pts:r.benchmark_curve.map(p=>[p.date,p.equity]),c:'#929aa5',l:'벤치마크'}]);$('eqLegend').innerHTML='<span style="color:#fcd535">━ 전략(비용 반영)</span> · <span style="color:#929aa5">━ '+esc(b.label)+'</span>';
+lineChart($('ddChart'),[{pts:r.equity_curve.map(p=>[p.date,p.drawdown]),c:'#f6465d',l:'낙폭',fill:true}],true);
 const yr=r.yearly.map(x=>`<tr><td>${x.period}</td><td>${pct(x.return)}</td></tr>`).join('');const mo=r.monthly.slice(-36).reverse().map(x=>`<tr><td>${x.period}</td><td>${pct(x.return)}</td></tr>`).join('');$('btPeriods').innerHTML=`<table><thead><tr><th>연도</th><th>수익률</th></tr></thead><tbody>${yr}</tbody></table><table><thead><tr><th>월(최근 36)</th><th>수익률</th></tr></thead><tbody>${mo}</tbody></table>`;
 const reg=r.by_regime||{};const ci2=r.cost_impact;$('btRegime').innerHTML=table([{h:'국면',k:'name',l:1},{h:'거래',k:'trades'},{h:'승률',k:'win_rate',f:v=>num(v)?(v*100).toFixed(1)+'%':'—'},{h:'기대값(R)',k:'expectancy_r',f:v=>fmt(v)}],Object.entries(reg).filter(([k])=>k[0]!=='_').map(([k,v])=>({name:{bull:'상승장',bear:'하락장',sideways:'횡보장',unknown:'미확인'}[k]||k,...v})),{empty:'국면 분류 불가'})+`<div class="help">${esc(reg._definition||'')}</div><div class="kv" style="margin-top:8px"><div><label>비용 전 총수익</label><b>${pct(ci2.gross_total_return)}</b></div><div><label>비용 후 총수익</label><b>${pct(ci2.net_total_return)}</b></div><div><label>비용 영향</label><b>${pct(-ci2.difference)}</b></div></div><div class="help">${esc(ci2.note)}</div>`;
 $('btTrades').innerHTML=table([{h:'종목',k:'symbol',l:1},{h:'신호일',k:'signal_date'},{h:'진입일',k:'entry_date'},{h:'진입가',k:'entry',f:v=>fmt(v,0)},{h:'손절',k:'initial_stop',f:v=>fmt(v,0)},{h:'목표',k:'target',f:v=>v===null?'—':fmt(v,0)},{h:'청산일',k:'exit_date'},{h:'청산가',k:'exit',f:v=>fmt(v,0)},{h:'수량',k:'qty'},{h:'순손익',k:'pnl',f:v=>`<span class="${v>=0?'positive':'negative'}">${fmt(v,0)}</span>`},{h:'R',k:'r_multiple',f:v=>fmt(v)},{h:'사유',k:'reason',l:1},{h:'품질 경고',k:'quality_flags',f:v=>(v||[]).join(',')||''}],[...r.trades].reverse(),{empty:'거래 없음'});
 $('btAssump').innerHTML=r.assumptions.map(a=>`<li>${esc(a)}</li>`).join('')}
-function lineChart(cv,series,isDD){fit(cv);const ctx=cv.getContext('2d');ctx.clearRect(0,0,cv.width,cv.height);const all=series.flatMap(s=>s.pts.map(p=>p[1])).filter(Number.isFinite);if(!all.length){ctx.fillStyle='#9aacc2';ctx.fillText('데이터 없음',20,30);return}const dates=[...new Set(series.flatMap(s=>s.pts.map(p=>p[0])))].sort();const W=cv.width,H=cv.height,pad={l:70,r:10,t:10,b:22};let lo=Math.min(...all),hi=Math.max(...all);if(isDD)hi=0;const y=v=>pad.t+(hi-v)/(hi-lo||1)*(H-pad.t-pad.b);const xi=d=>pad.l+dates.indexOf(d)/Math.max(1,dates.length-1)*(W-pad.l-pad.r);
-ctx.strokeStyle='#1d2a3c';ctx.fillStyle='#9aacc2';ctx.font='11px sans-serif';for(let k=0;k<5;k++){const v=lo+(hi-lo)*k/4;ctx.beginPath();ctx.moveTo(pad.l,y(v));ctx.lineTo(W-pad.r,y(v));ctx.stroke();ctx.fillText(isDD?(v*100).toFixed(1)+'%':Math.round(v).toLocaleString(),2,y(v)+4)}
-series.forEach(s=>{ctx.strokeStyle=s.c;ctx.lineWidth=2;ctx.beginPath();s.pts.forEach((p,i)=>{i?ctx.lineTo(xi(p[0]),y(p[1])):ctx.moveTo(xi(p[0]),y(p[1]))});ctx.stroke();if(s.fill){ctx.lineTo(xi(s.pts[s.pts.length-1][0]),y(0));ctx.lineTo(xi(s.pts[0][0]),y(0));ctx.globalAlpha=.2;ctx.fillStyle=s.c;ctx.fill();ctx.globalAlpha=1}});ctx.lineWidth=1;ctx.fillStyle='#9aacc2';ctx.fillText(dates[0],pad.l,H-5);ctx.fillText(dates[dates.length-1],W-80,H-5)}
+function lineChart(cv,series,isDD){fit(cv);const ctx=cv.getContext('2d');ctx.clearRect(0,0,cv.width,cv.height);const all=series.flatMap(s=>s.pts.map(p=>p[1])).filter(Number.isFinite);if(!all.length){ctx.fillStyle='#848e9c';ctx.fillText('데이터 없음',20,30);return}const dates=[...new Set(series.flatMap(s=>s.pts.map(p=>p[0])))].sort();const W=cv.width,H=cv.height,pad={l:70,r:10,t:10,b:22};let lo=Math.min(...all),hi=Math.max(...all);if(isDD)hi=0;const y=v=>pad.t+(hi-v)/(hi-lo||1)*(H-pad.t-pad.b);const xi=d=>pad.l+dates.indexOf(d)/Math.max(1,dates.length-1)*(W-pad.l-pad.r);
+ctx.strokeStyle='#2b3139';ctx.fillStyle='#848e9c';ctx.font='11px Inter,-apple-system,sans-serif';for(let k=0;k<5;k++){const v=lo+(hi-lo)*k/4;ctx.beginPath();ctx.moveTo(pad.l,y(v));ctx.lineTo(W-pad.r,y(v));ctx.stroke();ctx.fillText(isDD?(v*100).toFixed(1)+'%':Math.round(v).toLocaleString(),2,y(v)+4)}
+series.forEach(s=>{ctx.strokeStyle=s.c;ctx.lineWidth=2;ctx.beginPath();s.pts.forEach((p,i)=>{i?ctx.lineTo(xi(p[0]),y(p[1])):ctx.moveTo(xi(p[0]),y(p[1]))});ctx.stroke();if(s.fill){ctx.lineTo(xi(s.pts[s.pts.length-1][0]),y(0));ctx.lineTo(xi(s.pts[0][0]),y(0));ctx.globalAlpha=.2;ctx.fillStyle=s.c;ctx.fill();ctx.globalAlpha=1}});ctx.lineWidth=1;ctx.fillStyle='#848e9c';ctx.fillText(dates[0],pad.l,H-5);ctx.fillText(dates[dates.length-1],W-80,H-5)}
 async function runCompare(){await busy('btBusy',async()=>{const r=await post('/api/backtests/compare',{market:state.market,strategies:['volume_surge_only','volume_quiet','volume_quiet_breakout','breakout_volume','pullback_uptrend','ma_trend','rsi_rebound','bb_squeeze','momentum_rs','random_entry'],exit:exitCfg(),risk:riskCfg(),costs:costCfg()});
 $('btCompareOut').innerHTML=(r.data.warning?`<div class="warn">${esc(r.data.warning)}</div>`:'')+table([{h:'전략',k:'label',l:1,f:(v,row)=>`${esc(row.name||v)}<div class="small muted">${esc(row.strategy)}</div>`},{h:'신호',k:'signals'},{h:'거래',k:'trades'},{h:'총수익',k:'total_return',f:v=>pct(v)},{h:'MDD',k:'max_drawdown',f:v=>pct(v)},{h:'샤프',k:'sharpe',f:v=>fmt(v)},{h:'승률',k:'win_rate',f:v=>num(v)?(v*100).toFixed(1)+'%':'—'},{h:'기대값 R (95% CI)',k:'expectancy_r',f:(v,row)=>`${fmt(v)} <span class="small muted">${ci(row.expectancy_r_ci95,false)}</span>`},{h:'PF',k:'profit_factor',f:v=>fmt(v)},{h:'최대 연속손실',k:'max_consecutive_losses'},{h:'비고',k:'sample_warning',l:1,f:(v,row)=>esc(row.available===false?row.reason:(v||''))}],r.rows)+`<div class="help">${esc(r.note)}</div>`})}
 async function runExits(){await busy('btBusy',async()=>{const r=await post('/api/backtests/exits',{market:state.market,strategy:$('bStrategy').value,strategy_params:stratParams(),costs:costCfg()});const rows=Object.entries(r.variants).map(([k,v])=>({label:k,...v}));
@@ -423,13 +463,13 @@ const g=r.adoption;$('mlGate').innerHTML=`<div class="stat-val" style="font-size
 const folds=r.walk_forward.folds;$('mlFolds').innerHTML=table([{h:'폴드',k:'index'},{h:'학습',k:'train_start',f:(v,x)=>`${x.train_start}~${x.train_end}`},{h:'검증',k:'test_start',f:(v,x)=>`${x.test_start}~${x.test_end}`},{h:'학습 행',k:'train_rows'},{h:'퍼지된 행',k:'purged_rows'},{h:'검증 행',k:'test_rows'},...['climatology','rule',...models].map(m=>({h:m+' AUC',k:'models',f:v=>v&&v[m]?fmt(v[m].roc_auc,3):'—'}))],folds)+(best&&s[best].by_regime?'<div class="help">국면별 AUC ('+esc(best)+'): '+Object.entries(s[best].by_regime).map(([k,v])=>`${k} ${fmt(v.roc_auc,3)} (n=${v.n})`).join(' · ')+'</div>':'<div class="help">국면별 성능: 벤치마크 미적재 또는 표본 부족</div>');
 $('mlLeak').innerHTML='누수 검사: '+r.leakage_checks.feature_causality.map(c=>c.passed===true?'✓ 통과':c.passed===false?'✗ 실패':'— 미검사').join(' · ')+` · ${esc(r.leakage_checks.purge)} · ${esc(r.leakage_checks.calibration_split)}`;
 const f=r.ml_filter_comparison;$('mlFilter').innerHTML=f?`<h2 class="panel-title">기준 전략 vs ML 필터 (${esc(f.start)} 이후, 표본 외)</h2>`+table([{h:'',k:'label',l:1},{h:'거래',k:'trades'},{h:'승률',k:'win_rate',f:v=>num(v)?(v*100).toFixed(1)+'%':'—'},{h:'기대값 R (95% CI)',k:'expectancy_r',f:(v,x)=>`${fmt(v)} <span class="small muted">${ci(x.expectancy_r_ci95,false)}</span>`},{h:'총수익',k:'total_return',f:v=>pct(v)},{h:'MDD',k:'max_drawdown',f:v=>pct(v)},{h:'비고',k:'sample_warning',l:1}],f.rows)+`<div class="help">${esc(f.note)}</div>`:''}
-function relChart(cv,bins,name){fit(cv);const ctx=cv.getContext('2d');ctx.clearRect(0,0,cv.width,cv.height);const W=cv.width,H=cv.height,p=36;ctx.strokeStyle='#3b4a63';ctx.setLineDash([4,4]);ctx.beginPath();ctx.moveTo(p,H-p);ctx.lineTo(W-p,p);ctx.stroke();ctx.setLineDash([]);ctx.fillStyle='#9aacc2';ctx.font='11px sans-serif';ctx.fillText('예측 확률 →',W-110,H-8);ctx.fillText('실제 빈도',4,14);ctx.fillText(name,p+4,p);const X=v=>p+v*(W-2*p),Y=v=>H-p-v*(H-2*p);ctx.strokeStyle='#7ee7c7';ctx.lineWidth=2;ctx.beginPath();bins.forEach((b,i)=>{i?ctx.lineTo(X(b.mean_predicted),Y(b.observed_rate)):ctx.moveTo(X(b.mean_predicted),Y(b.observed_rate))});ctx.stroke();bins.forEach(b=>{ctx.fillStyle='#7ee7c7';ctx.beginPath();ctx.arc(X(b.mean_predicted),Y(b.observed_rate),Math.min(8,2+Math.log10(b.n+1)*2),0,7);ctx.fill()});ctx.lineWidth=1}
+function relChart(cv,bins,name){fit(cv);const ctx=cv.getContext('2d');ctx.clearRect(0,0,cv.width,cv.height);const W=cv.width,H=cv.height,p=36;ctx.strokeStyle='#474d57';ctx.setLineDash([4,4]);ctx.beginPath();ctx.moveTo(p,H-p);ctx.lineTo(W-p,p);ctx.stroke();ctx.setLineDash([]);ctx.fillStyle='#848e9c';ctx.font='11px Inter,-apple-system,sans-serif';ctx.fillText('예측 확률 →',W-110,H-8);ctx.fillText('실제 빈도',4,14);ctx.fillText(name,p+4,p);const X=v=>p+v*(W-2*p),Y=v=>H-p-v*(H-2*p);ctx.strokeStyle='#fcd535';ctx.lineWidth=2;ctx.beginPath();bins.forEach((b,i)=>{i?ctx.lineTo(X(b.mean_predicted),Y(b.observed_rate)):ctx.moveTo(X(b.mean_predicted),Y(b.observed_rate))});ctx.stroke();bins.forEach(b=>{ctx.fillStyle='#fcd535';ctx.beginPath();ctx.arc(X(b.mean_predicted),Y(b.observed_rate),Math.min(8,2+Math.log10(b.n+1)*2),0,7);ctx.fill()});ctx.lineWidth=1}
 async function loadModels(){try{const m=await api('/api/ml/models');$('mlModels').innerHTML=m.length?m.slice(0,10).map(x=>`<div>${esc(x.version)} · ${esc(x.task)} h=${x.horizon} · ${x.adopted?'<b class="positive">채택</b>':'미채택'} ${x.synthetic?'<span class="badge st-DEMO">합성</span>':''} · ${esc(x.data_start)}~${esc(x.data_end)}</div>`).join(''):'기록 없음'}catch(e){}}
 
 // ---------- paper
 async function loadAccounts(){const a=await api('/api/paper/accounts');$('pAccounts').innerHTML=a.length?a.map(x=>`<option value="${x.id}">${esc(x.name)} (#${x.id})</option>`).join(''):'<option value="">계좌 없음</option>';if(a.length)await loadAccount()}
 async function loadAccount(){const id=$('pAccounts').value;if(!id)return;const s=await api('/api/paper/accounts/'+id);state.paper=s;const a=s.account;$('pKv').innerHTML=[['전략',esc(a.strategy)],['처리일',esc(a.last_processed_date||'—')],['평가 자산',fmt(s.equity,0)],['현금',fmt(a.cash,0)],['누적 실현손익',`<span class="${s.realized_pnl>=0?'positive':'negative'}">${fmt(s.realized_pnl,0)}</span>`],['최대 낙폭',pct(s.max_drawdown)],['청산 거래',s.trades.length],['승률',num(s.win_rate)?(s.win_rate*100).toFixed(1)+'%':'—']].map(([k,v])=>`<div><label>${k}</label><b>${v}</b></div>`).join('');$('pNote').textContent=s.note;
-lineChart($('pChart'),[{pts:s.equity_curve.map(p=>[p.date,p.equity]),c:'#7ee7c7'}]);$('pPos').innerHTML=table([{h:'종목',k:'symbol',l:1},{h:'수량',k:'qty'},{h:'진입가',k:'entry_price',f:v=>fmt(v,0)},{h:'진입일',k:'entry_date'},{h:'손절',k:'stop_price',f:v=>fmt(v,0)},{h:'익절',k:'target_price',f:v=>fmt(v,0)}],s.positions,{empty:'보유 없음'});
+lineChart($('pChart'),[{pts:s.equity_curve.map(p=>[p.date,p.equity]),c:'#fcd535'}]);$('pPos').innerHTML=table([{h:'종목',k:'symbol',l:1},{h:'수량',k:'qty'},{h:'진입가',k:'entry_price',f:v=>fmt(v,0)},{h:'진입일',k:'entry_date'},{h:'손절',k:'stop_price',f:v=>fmt(v,0)},{h:'익절',k:'target_price',f:v=>fmt(v,0)}],s.positions,{empty:'보유 없음'});
 $('pOrders').innerHTML=table([{h:'#',k:'id'},{h:'종목',k:'symbol',l:1},{h:'수량',k:'qty'},{h:'유형',k:'order_type'},{h:'지정가',k:'limit_price',f:v=>v?fmt(v,0):'—'},{h:'생성일',k:'created_date'},{h:'만료',k:'expires_date'},{h:'메모',k:'note',l:1},{h:'',k:'id',f:v=>`<button data-cancel="${v}">취소</button>`}],s.pending_orders,{empty:'미체결 없음'});$('pOrders').querySelectorAll('[data-cancel]').forEach(b=>b.onclick=async()=>{await api(`/api/paper/accounts/${id}/orders/${b.dataset.cancel}`,{method:'DELETE'});loadAccount()});
 $('pTrades').innerHTML=table([{h:'종목',k:'symbol',l:1},{h:'진입',k:'entry_date'},{h:'청산',k:'exit_date'},{h:'수량',k:'qty'},{h:'진입가',k:'entry_price',f:v=>fmt(v,0)},{h:'청산가',k:'exit_price',f:v=>fmt(v,0)},{h:'사유',k:'reason',l:1},{h:'손익',k:'pnl',f:v=>`<span class="${v>=0?'positive':'negative'}">${fmt(v,0)}</span>`}],[...s.trades].reverse(),{empty:'청산 기록 없음'})}
 
